@@ -13,3 +13,7 @@ obj-$(CONFIG_PM_AUTOSLEEP)	+= autosleep.o
 obj-$(CONFIG_PM_WAKELOCKS)	+= wakelock.o
 
 obj-$(CONFIG_MAGIC_SYSRQ)	+= poweroff.o
+obj-$(CONFIG_SUSPEND_INFO) += suspend_info.o
+#obj-$(CONFIG_SUSPEND_RESUME_IRQ) += suspend_resume_irq.o
+#obj-$(CONFIG_SUSPEND_INFO)	+= suspend_device.o
+#obj-$(CONFIG_SUSPEND_CONGIF) += suspend_config.o

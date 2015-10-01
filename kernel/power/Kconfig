@@ -164,6 +164,16 @@ config PM_ADVANCED_DEBUG
 	fields of device objects from user space.  If you are not a kernel
 	developer interested in debugging/testing Power Management, say "no".
 
+config CCI_PM_ACTIVE_WAKELOCK_LOG_PERIOD
+	int "Print active wakelock log"
+	range 1 10
+	depends on SUSPEND
+	default 5
+	help
+	  This option configures the print period (seconds) of the CCI active wakelock log.
+	  When wake_lock and wake_unlock have been called, the we will call print_active_locks() and record the timestamp.
+	  The timestamp will be compared when they have been called next time.
+
 config PM_TEST_SUSPEND
 	bool "Test suspend/resume and wakealarm during bootup"
 	depends on SUSPEND && PM_DEBUG && RTC_CLASS=y
@@ -277,3 +287,42 @@ config SUSPEND_TIME
 	  Prints the time spent in suspend in the kernel log, and
 	  keeps statistics on the time spent in suspend in
 	  /sys/kernel/debug/suspend_time
+
+config SUSPEND_INFO
+	bool "Log suspend information"
+	depends on SUSPEND
+	default y
+	---help---
+	  Prints the suspend info in suspend , and keeps statistics on the 
+	  suspend info in suspend in /sys/kernel/debug/suspend_info
+
+config SUSPEND_DURATION
+	bool "Log suspend and resume duration information"
+	depends on SUSPEND
+	default y
+	---help---
+	  Prints the suspend and resume duration info, and keeps statistics on the 
+	  suspend info in suspend in /sys/kernel/debug/suspend_info
+
+config SUSPEND_TIMEOUT
+	bool "Suspend and resume timeout mechanism"
+	depends on SUSPEND
+	default y
+	---help---
+	  This enables suspend and resume timeout mechanism and triggers kernel panic.
+
+config SUSPEND_RESUME_IRQ
+	bool "Log resume irq information"
+	depends on SUSPEND
+	default y
+	---help---
+	  Prints the resume irq info, and keeps statistics on the 
+	  suspend info in suspend in /sys/kernel/debug/suspend_info
+
+config SUSPEND_CONGIF
+	bool "Suspend and resume dynamic config"
+	depends on SUSPEND
+	default y
+	---help---
+	  This enables suspend and resume dynamic config mechanism.
+

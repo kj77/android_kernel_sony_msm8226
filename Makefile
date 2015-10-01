@@ -615,6 +615,16 @@ ifdef CONFIG_DYNAMIC_FTRACE
 endif
 endif
 
+#S:LO for sim detection//hh
+#ifeq ($(CCI_SIM_DET_EAGLE_DS),1)
+#	KBUILD_CFLAGS	+= -DCCI_SIM_DET_EAGLE_DS=y
+#endif
+#E:LO for sim detection
+
+ifeq ($(TARGET_PRODUCT),eagleds)
+  KBUILD_CFLAGS	+= -DCCI_SIM_DET_EAGLE_DS=y
+endif
+
 # We trigger additional mismatches with less inlining
 ifdef CONFIG_DEBUG_SECTION_MISMATCH
 KBUILD_CFLAGS += $(call cc-option, -fno-inline-functions-called-once)
