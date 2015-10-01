@@ -314,6 +314,7 @@ header-y += pkt_cls.h
 header-y += pkt_sched.h
 header-y += pktcdvd.h
 header-y += pmu.h
+header-y += pn544.h
 header-y += poll.h
 header-y += posix_types.h
 header-y += ppdev.h
