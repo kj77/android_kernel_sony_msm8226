@@ -1100,6 +1100,18 @@
 			qcom,ocmem-part-min = <0x20000>;
 		};
 	};
+       
+       i2c@f9925000 { /* BLSP-1 QUP-3 */
+       nfc547@28 {
+			compatible = "nxp,pn547";
+			reg = <0x28>;
+			nxp,ven = <&msmgpio 20 0x00>;
+			nxp,irq_gpio = <&msmgpio 21 0x00>;
+			nxp,dwld_en = <&msmgpio 22 0x00>;
+			interrupt-parent = <&msmgpio>;
+			interrupts = <21 0x2>;	
+		};
+       };
 
 	qcom,venus@fdce0000 {
 		compatible = "qcom,pil-venus";
