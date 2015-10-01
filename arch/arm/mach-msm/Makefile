@@ -197,6 +197,7 @@ ifdef CONFIG_MSM_SUBSYSTEM_RESTART
 endif
 obj-$(CONFIG_MSM_SYSMON_COMM) += sysmon.o
 
+obj-$(CONFIG_CCI_HARDWARE_ID) += cci_hw_id.o
 #obj-$(CONFIG_CPU_IDLE) += cpuidle.o
 
 ifdef CONFIG_MSM_CAMERA_V4L2
@@ -290,6 +291,7 @@ obj-$(CONFIG_ARCH_MSM9625) += clock-local2.o clock-pll.o clock-9625.o clock-rpm.
 obj-$(CONFIG_ARCH_MPQ8092) += board-8092.o board-8092-gpiomux.o
 obj-$(CONFIG_ARCH_MPQ8092) += clock-8092.o
 obj-$(CONFIG_ARCH_MSM8226) += board-8226.o board-8226-gpiomux.o
+obj-$(CONFIG_ARCH_MSM8226) += board-8226-console.o
 obj-$(CONFIG_ARCH_MSM8226) += clock-local2.o clock-pll.o clock-8226.o clock-rpm.o clock-voter.o clock-mdss-8974.o
 obj-$(CONFIG_ARCH_MSM8226) += acpuclock-8226.o acpuclock-cortex.o
 obj-$(CONFIG_ARCH_MSM8610) += board-8610.o board-8610-gpiomux.o
@@ -384,6 +386,7 @@ obj-$(CONFIG_MSM_RTB) += msm_rtb.o
 obj-$(CONFIG_MSM_CACHE_ERP) += cache_erp.o
 obj-$(CONFIG_MSM_EBI_ERP) += ebi_erp.o
 obj-$(CONFIG_MSM_CACHE_DUMP) += msm_cache_dump.o
+obj-$(CONFIG_SONY_SSM) += sony_ssm.o
 
 obj-$(CONFIG_MSM_HSIC_SYSMON) += hsic_sysmon.o
 obj-$(CONFIG_MSM_HSIC_SYSMON_TEST) += hsic_sysmon_test.o
@@ -411,6 +414,7 @@ obj-$(CONFIG_MSM_SMCMOD) += smcmod.o
 obj-$(CONFIG_MSM_CPU_PWRCTL) +=  msm_cpu_pwrctl.o
 
 obj-$(CONFIG_ARCH_MSM8974) += msm_mpmctr.o
+obj-$(CONFIG_ARCH_MSM8226) += msm_mpmctr.o
 obj-$(CONFIG_MSM_CPR_REGULATOR) += cpr-regulator.o
 obj-$(CONFIG_CPU_FREQ_MSM) += cpufreq.o
 obj-$(CONFIG_MSM_DEVFREQ_CPUBW) += devfreq_cpubw.o
@@ -419,3 +423,11 @@ obj-$(CONFIG_WALL_CLK) += wallclk.o
 obj-$(CONFIG_WALL_CLK_SYSFS) += wallclk_sysfs.o
 obj-$(CONFIG_ARCH_RANDOM) += early_random.o
 obj-$(CONFIG_PERFMAP) += perfmap.o
+
+obj-$(CONFIG_RAMDUMP_TAGS) += board-rdtags.o
+CFLAGS_board-rdtags.o  := \
+	-D"INFO_PRODUCT=\"$(if $(TARGET_PRODUCT),$(TARGET_PRODUCT),unknown)\"" \
+	-D"INFO_VARIANT= \
+	\"$(if $(TARGET_BUILD_VARIANT),$(TARGET_BUILD_VARIANT),unknown)\"" \
+	-D"INFO_BUILDID=\"$(if $(SEMC_SYSTEM_VERSION),$(SEMC_SYSTEM_VERSION),private)\""
+
