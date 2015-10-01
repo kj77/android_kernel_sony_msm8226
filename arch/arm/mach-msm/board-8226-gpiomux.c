@@ -174,7 +174,7 @@ static struct gpiomux_setting uim1_det_susp_cfg = {
 	.dir = GPIOMUX_IN,
 };
 
-#ifdef CCI_SIM_DET_EAGLE_DS
+#ifdef CONFIG_SIM_DET_EAGLE_DS
 static struct gpiomux_setting uim2_det_actv_cfg = {
 	.func = GPIOMUX_FUNC_1,
 	.drv = GPIOMUX_DRV_2MA,
@@ -197,7 +197,7 @@ static struct msm_gpiomux_config msm8226_uim_det_configs[] __initdata = {
 			[GPIOMUX_SUSPENDED] = &uim1_det_susp_cfg,
 		},
 	},
-#ifdef CCI_SIM_DET_EAGLE_DS
+#ifdef CONFIG_SIM_DET_EAGLE_DS
 	{
 		.gpio      = 56,
 		.settings = {
