@@ -29,12 +29,14 @@
 #include <linux/of_platform.h>
 #include <linux/of_gpio.h>
 #include <linux/spinlock.h>
-
+//#include <mach/cci_hw_id.h>// disable here because HWID is not ready
+#include <linux/wakelock.h>/* KevinA_Lin, 20131206 */
 struct gpio_button_data {
 	const struct gpio_keys_button *button;
 	struct input_dev *input;
 	struct timer_list timer;
 	struct work_struct work;
+	struct wake_lock gpio_keys_wake_lock;/* KevinA_Lin, 20150408 Implement side-key function  */ 
 	unsigned int timer_debounce;	/* in msecs */
 	unsigned int irq;
 	spinlock_t lock;
@@ -335,7 +337,14 @@ static void gpio_keys_gpio_report_event(struct gpio_button_data *bdata)
 		if (state)
 			input_event(input, type, button->code, button->value);
 	} else {
-		input_event(input, type, button->code, !!state);
+		/*KevinA_Lin, 20150408 Implement side-key function S*/
+#ifndef ORG_VER
+		if (bdata->button->gpio==106 || bdata->button->gpio==107|| bdata->button->gpio==108) {
+			wake_lock_timeout(&bdata->gpio_keys_wake_lock, HZ*3);
+			input_event(input, type, button->code, !!state);
+		}
+#endif
+		/*KevinA_Lin, 20150408 Implement side-key function E*/
 	}
 	input_sync(input);
 }
@@ -473,6 +482,11 @@ static int __devinit gpio_keys_setup_key(struct platform_device *pdev,
 			    gpio_keys_gpio_timer, (unsigned long)bdata);
 
 		isr = gpio_keys_gpio_isr;
+		/*KevinA_Lin, 20150408 Implement side-key function S*/
+		#ifndef ORG_VER
+		wake_lock_init(&bdata->gpio_keys_wake_lock, WAKE_LOCK_SUSPEND, "gpio_keys_wake_lock");/* KevinA_Lin, 20131206 */ 
+		#endif
+		/*KevinA_Lin, 20150408 Implement side-key function E*/
 		irqflags = IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING;
 
 	} else {
@@ -654,7 +668,33 @@ static int __devinit gpio_keys_probe(struct platform_device *pdev)
 	struct input_dev *input;
 	int i, error;
 	int wakeup = 0;
+	struct device_node *node;/* KevinA_Lin, 20130806 */ 
+	int cci_hwid, dt_hwid, rc;/* KevinA_Lin, 20130806 */ 
+	
+	/* KevinA_Lin, 20150408 Implement side-key function S */ 
+	#ifdef ORG_VER
+	#else
+	node = dev->of_node;
+	//cci_hwid = get_cci_hw_id(); // disable here because HWID is not ready
+	rc = of_property_read_u32(node, "hwid-type", &dt_hwid);
+	
+	if(rc) {
+		pr_info("hwid-type not specified\n");
+		return rc;
+	}	
+	
+	//if (cci_hwid > 0)// disable here because HWID is not ready
+		cci_hwid = 1;
 
+	if (cci_hwid != dt_hwid) {
+		pr_info("%s(): cci_hwid=%d doesn't match dt_hwid=%d\n", __func__, cci_hwid, dt_hwid);
+		return -ENODEV;
+	} else {
+		pr_info("%s(): cci_hwid=%d  match dt_hwid=%d\n", __func__, cci_hwid, dt_hwid);
+	}
+	#endif
+	/* KevinA_Lin, 20150408 Implement side-key function E */ 
+	
 	if (!pdata) {
 		error = gpio_keys_get_devtree_pdata(dev, &alt_pdata);
 		if (error)
@@ -806,8 +846,16 @@ static int gpio_keys_resume(struct device *dev)
 		if (bdata->button->wakeup && device_may_wakeup(dev))
 			disable_irq_wake(bdata->irq);
 
+		/*KevinA_Lin, 20150408 Implement side-key function S*/
+		#ifdef ORG_VER
 		if (gpio_is_valid(bdata->button->gpio))
 			gpio_keys_gpio_report_event(bdata);
+		#else
+		 /*Bypass camera snapshot and focus key*/
+		if (gpio_is_valid(bdata->button->gpio) && (bdata->button->gpio!=107 && bdata->button->gpio!=108))
+			gpio_keys_gpio_report_event(bdata);
+		#endif
+		/*KevinA_Lin, 20150408 Implement side-key function E*/
 	}
 	input_sync(ddata->input);
 

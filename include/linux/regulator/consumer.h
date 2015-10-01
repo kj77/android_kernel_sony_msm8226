@@ -196,7 +196,9 @@ int regulator_unregister_notifier(struct regulator *regulator,
 /* driver data - core doesn't touch */
 void *regulator_get_drvdata(struct regulator *regulator);
 void regulator_set_drvdata(struct regulator *regulator, void *data);
-
+/* Kevina_Lin 20140218 */
+extern int regulator_map_list_match(char *suspend_config_regulaotr);
+/* Kevina_Lin 20140218 */
 #else
 
 /*

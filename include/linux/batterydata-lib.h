@@ -22,8 +22,13 @@
 #define PC_CC_COLS             13
 
 #define PC_TEMP_ROWS		31
+/*[Bug ] S Jonny_Chan */
+#ifdef ORG_VER
 #define PC_TEMP_COLS		8
-
+#else
+#define PC_TEMP_COLS		9
+#endif
+/*[Bug ] E Jonny_Chan */
 #define MAX_SINGLE_LUT_COLS	20
 
 #define MAX_BATT_ID_NUM		4
