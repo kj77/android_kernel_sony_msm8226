@@ -1,4 +1,5 @@
 /* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013 Sony Mobile Communications AB.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -25,6 +26,7 @@
 #include <linux/of_fdt.h>
 #include <linux/of_irq.h>
 #include <linux/memory.h>
+#include <linux/memblock.h>
 #include <linux/regulator/cpr-regulator.h>
 #include <linux/regulator/fan53555.h>
 #include <linux/regulator/onsemi-ncp6335d.h>
@@ -34,6 +36,7 @@
 #include <asm/hardware/gic.h>
 #include <asm/mach/arch.h>
 #include <asm/mach/time.h>
+#include <asm/setup.h>
 #include <mach/board.h>
 #include <mach/msm_bus.h>
 #include <mach/gpiomux.h>
@@ -50,6 +53,7 @@
 #include <mach/rpm-smd.h>
 #include <mach/rpm-regulator-smd.h>
 #include <mach/msm_smem.h>
+#include <mach/msm_memory_dump.h>
 #include <linux/msm_thermal.h>
 #include "board-dt.h"
 #include "clock.h"
@@ -58,6 +62,77 @@
 #include "pm.h"
 #include "modem_notifier.h"
 #include "spm-regulator.h"
+
+//S:LO
+#include <linux/gpio_event.h>
+//E:LO
+#ifdef CONFIG_RAMDUMP_TAGS
+#include "board-rdtags.h"
+#endif
+
+/*---------------------  Static Definitions -------------------------*/
+#define HENRY_DEBUG 1   //0:disable, 1:enable
+#if(HENRY_DEBUG)
+    #define Printhh(string, args...)    printk("henry(K)=> "string, ##args);
+#else
+    #define Printhh(string, args...)
+#endif
+
+#define HENRY_TIP 1 //give RD information. Set 1 if develop,and set 0 when release.
+#if(HENRY_TIP)
+    #define PrintTip(string, args...)    printk("henry(K)=> "string, ##args);
+#else
+    #define PrintTip(string, args...)
+#endif
+/*---------------------  Static Classes  ----------------------------*/
+
+
+//S:LO//hh
+#define GPIO_SW_UIM1_DET    60
+#ifdef CONFIG_SIM_DET_EAGLE_DS
+#define GPIO_SW_UIM2_DET    56
+#endif
+
+static struct gpio_event_direct_entry gpio_sw_gpio_map[] = {
+	{GPIO_SW_UIM1_DET, SW_JACK_PHYSICAL_INSERT},
+#ifdef CONFIG_SIM_DET_EAGLE_DS
+	{GPIO_SW_UIM2_DET, SW_JACK_PHYSICAL_INSERT},
+#endif
+};
+
+
+static struct gpio_event_input_info gpio_sw_gpio_info = {
+	.info.func = gpio_event_input_func,
+	.flags = GPIOEDF_ACTIVE_HIGH,
+	.type = EV_SW,
+	.keymap = gpio_sw_gpio_map,
+	.keymap_size = ARRAY_SIZE(gpio_sw_gpio_map),
+	.debounce_time.tv64 = 800 * NSEC_PER_MSEC,
+        .info.no_suspend = false,
+};
+
+static struct gpio_event_info *gpio_key_info[] = {
+	&gpio_sw_gpio_info.info,
+};
+
+struct gpio_event_platform_data gpio_key_data = {
+	.name		= "uim-det-gpio-keys",
+	.info		= gpio_key_info,
+	.info_count	= ARRAY_SIZE(gpio_key_info),
+};
+
+struct platform_device gpio_key_device = {
+	.name	= GPIO_EVENT_DEV_NAME,
+	.id	= -1,
+	.dev	= {
+		.platform_data	= &gpio_key_data,
+	},
+};
+
+static struct platform_device *common_devices[] = {
+	&gpio_key_device,
+};
+//E:LO
 
 static struct memtype_reserve msm8226_reserve_table[] __initdata = {
 	[MEMTYPE_SMI] = {
@@ -79,6 +154,93 @@ static struct of_dev_auxdata msm_hsic_host_adata[] = {
 	OF_DEV_AUXDATA("qcom,hsic-host", 0xF9A00000, "msm_hsic_host", NULL),
 	{}
 };
+
+#ifdef CONFIG_RAMDUMP_TAGS
+static struct resource rdtags_resources[] = {
+	[0] = {
+		.name   = "rdtags_mem",
+		.flags  = IORESOURCE_MEM,
+	},
+};
+
+static struct platform_device rdtags_device = {
+	.name           = "rdtags",
+	.id             = -1,
+	.dev = {
+		.platform_data = &rdtags_platdata,
+	},
+};
+#endif
+
+#ifdef CONFIG_CRASH_LAST_LOGS
+
+static struct resource lastlogs_resources[] = {
+	[0] = {
+		.name	= "last_kmsg",
+		.flags	= IORESOURCE_MEM,
+	},
+	[1] = {
+		.name	= "last_amsslog",
+		.flags	= IORESOURCE_MEM,
+	},
+};
+
+static struct platform_device lastlogs_device = {
+	.name           = "last_logs",
+	.id             = -1,
+};
+#endif
+
+#define RDTAGS_MEM_SIZE (256 * SZ_1K)
+#define RDTAGS_MEM_DESC_SIZE (256 * SZ_1K)
+#define LAST_LOGS_OFFSET (RDTAGS_MEM_SIZE + RDTAGS_MEM_DESC_SIZE)
+
+#ifdef CONFIG_CRASH_LAST_LOGS
+#define LAST_LOG_HEADER_SIZE 4096
+#define KMSG_LOG_SIZE ((1 << CONFIG_LOG_BUF_SHIFT) + LAST_LOG_HEADER_SIZE)
+#define AMSS_LOG_SIZE ((16 * SZ_1K) + LAST_LOG_HEADER_SIZE)
+#endif
+
+#if defined(CONFIG_RAMDUMP_TAGS) || defined(CONFIG_CRASH_LAST_LOGS)
+static void reserve_debug_memory(void)
+{
+	struct membank *mb = &meminfo.bank[meminfo.nr_banks - 1];
+	unsigned long bank_end = mb->start + mb->size;
+	/*Base address for rdtags*/
+	unsigned long debug_mem_base = bank_end - SZ_1M;
+	/*Base address for crash logs memory*/
+	unsigned long lastlogs_base = debug_mem_base + LAST_LOGS_OFFSET;
+
+	memblock_free(debug_mem_base, SZ_1M);
+	memblock_remove(debug_mem_base, SZ_1M);
+#ifdef CONFIG_RAMDUMP_TAGS
+	rdtags_resources[0].start = debug_mem_base;
+	rdtags_resources[0].end = debug_mem_base + RDTAGS_MEM_SIZE - 1;
+	debug_mem_base += RDTAGS_MEM_SIZE;
+	pr_info("Rdtags start %x end %x\n", \
+		(unsigned int)rdtags_resources[0].start, \
+		(unsigned int)rdtags_resources[0].end);
+	rdtags_device.num_resources = ARRAY_SIZE(rdtags_resources);
+	rdtags_device.resource = rdtags_resources;
+#endif
+#ifdef CONFIG_CRASH_LAST_LOGS
+	lastlogs_resources[0].start = lastlogs_base;
+	lastlogs_resources[0].end = lastlogs_base + KMSG_LOG_SIZE - 1;
+	lastlogs_base += KMSG_LOG_SIZE;
+	pr_info("last_kmsg start %x end %x\n", \
+		(unsigned int)lastlogs_resources[0].start, \
+		(unsigned int)lastlogs_resources[0].end);
+
+	lastlogs_resources[1].start = lastlogs_base;
+	lastlogs_resources[1].end = lastlogs_base + AMSS_LOG_SIZE - 1;
+	lastlogs_device.num_resources = ARRAY_SIZE(lastlogs_resources);
+	lastlogs_device.resource = lastlogs_resources;
+	pr_info("last_amsslog start %x end %x\n", \
+		(unsigned int)lastlogs_resources[1].start, \
+		(unsigned int)lastlogs_resources[1].end);
+#endif
+}
+#endif
 
 static struct of_dev_auxdata msm8226_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("qcom,msm-sdcc", 0xF9824000, \
@@ -111,8 +273,26 @@ static void __init msm8226_early_memory(void)
 	of_scan_flat_dt(dt_scan_for_memory_hole, msm8226_reserve_table);
 }
 
+void __init msm8226_init_early(void)
+{
+	msm_reserve_last_regs();
+}
+
+void __init msm8226_add_devices(void)
+{
+#ifdef CONFIG_RAMDUMP_TAGS
+	platform_device_register(&rdtags_device);
+#endif
+#ifdef CONFIG_CRASH_LAST_LOGS
+	platform_device_register(&lastlogs_device);
+#endif
+}
+
 static void __init msm8226_reserve(void)
 {
+#if defined(CONFIG_RAMDUMP_TAGS) || defined(CONFIG_CRASH_LAST_LOGS)
+	reserve_debug_memory();
+#endif
 	reserve_info = &msm8226_reserve_info;
 	of_scan_flat_dt(dt_scan_for_memory_reserve, msm8226_reserve_table);
 	msm_reserve();
@@ -157,7 +337,13 @@ void __init msm8226_init(void)
 
 	msm8226_init_gpiomux();
 	board_dt_populate(adata);
+	msm8226_add_devices();
 	msm8226_add_drivers();
+	//S:LO//hh
+	Printhh("[%s] enter..\n", __FUNCTION__);
+
+	platform_add_devices(common_devices, ARRAY_SIZE(common_devices));
+	//E:LO
 }
 
 static const char *msm8226_dt_match[] __initconst = {
@@ -176,6 +362,7 @@ DT_MACHINE_START(MSM8226_DT, "Qualcomm MSM 8x26 / MSM 8x28 (Flattened Device Tre
 	.dt_compat = msm8226_dt_match,
 	.reserve = msm8226_reserve,
 	.init_very_early = msm8226_early_memory,
+	.init_early = msm8226_init_early,
 	.restart = msm_restart,
 	.smp = &arm_smp_ops,
 MACHINE_END

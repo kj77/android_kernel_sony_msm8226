@@ -1140,6 +1140,14 @@ config MACH_FSM9XXX_SURF
 
 endmenu
 
+config SIM_DET_EAGLE_DS
+        bool "Sony Mobile Eagle dsds support"
+        default n
+        help
+          Support for dsds on the SONY Mobile Xperia M2 device.
+          If you enable this config,
+          Please use SONY Mobile source tree.
+
 config MSM_STACKED_MEMORY
 	bool "Stacked Memory"
 	default y
@@ -2900,6 +2908,15 @@ config MSM_CACHE_DUMP_ON_PANIC
 	  want to dump the L1 and L2 caches on panic before any flush occurs.
 	  If unsure, say N
 
+config SONY_SSM
+	bool "Support Super Stamina Mode"
+	default n
+	help
+	  This enables support for power mode notifications, required by Super
+	  Stamina Mode. The driver will let a user space application register
+	  for notifications when the device is ready to switch into a new
+	  power mode.
+
 config MSM_HSIC_SYSMON
 	tristate "MSM HSIC system monitor driver"
 	depends on USB
@@ -3043,6 +3060,12 @@ config KRAIT_REGULATOR
 	 line from the PMIC. This supply line is powered by multiple
 	 regulators running in ganged mode inside the PMIC. Enable
 	 this option to support such configurations.
+
+config CCI_HARDWARE_ID
+	bool "CCI Hardware ID Module"
+	depends on MSM_SMD
+	default y
+
 endif
 
 config KERNEL_TEXT_MPU_PROT

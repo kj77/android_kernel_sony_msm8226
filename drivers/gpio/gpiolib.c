@@ -15,6 +15,33 @@
 #define CREATE_TRACE_POINTS
 #include <trace/events/gpio.h>
 
+/* KevinA_Lin 20140218 */
+#ifdef ORG_VER
+#else
+#include "linux/proc_fs.h"
+#include <linux/suspend_info.h>
+#include <linux/syscore_ops.h>
+#include <mach/msm_iomap.h>
+#include <linux/io.h>
+#include <linux/regulator/consumer.h>
+//#include <mach/irqs.h> //modify for msm8x26
+#define PM8x26_NR_GPIOS 8 //modify for pm8x26
+#define PM8x26_NR_MPPS 8 //modify for pm8x26
+#define NR_MSM_GPIOS 121//modify for msm8x26
+
+unsigned int gpio_msm_suspend_cfg[NR_MSM_GPIOS];
+unsigned int gpio_msm_suspend_in_out[NR_MSM_GPIOS];
+unsigned int gpio_pmic_suspend_cfg[PM8x26_NR_GPIOS];//modify for pm8x26
+unsigned int gpio_pmic_suspend_in_out[PM8x26_NR_GPIOS];//modify for pm8x26
+unsigned int mpp_pmic_suspend_cfg[PM8x26_NR_MPPS];//modify for pm8x26
+unsigned int mpp_pmic_suspend_in_out[PM8x26_NR_MPPS];//modify for pm8x26
+unsigned int is_suspend = 0;
+
+unsigned int is_gpio_msm_suspend_valid = 0;
+unsigned int is_pmic_mpp_suspend_valid = 0;
+#endif
+/* KevinA_Lin 20140218 */
+
 /* Optional implementation infrastructure for GPIO interfaces.
  *
  * Platforms may want to use this if they tend to use very many GPIOs
@@ -1870,3 +1897,328 @@ static int __init gpiolib_debugfs_init(void)
 subsys_initcall(gpiolib_debugfs_init);
 
 #endif	/* DEBUG_FS */
+
+/* KevinA_Lin 20140218 */
+#ifdef ORG_VER
+#else
+#define GPIO_CONFIG(gpio)         (MSM_TLMM_BASE + 0x1000 + (0x10 * (gpio)))
+#define GPIO_IN_OUT(gpio)         (MSM_TLMM_BASE + 0x1004 + (0x10 * (gpio)))
+
+//for runtime tunning
+static int get_gpio_vaild(void *data, u64 * val)
+{
+	int ret;
+
+	ret = is_gpio_msm_suspend_valid;
+	*val = ret;
+	return 0;
+}
+
+static int set_gpio_vaild(void *data, u64 val)
+{
+	is_gpio_msm_suspend_valid = (unsigned int)val;
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(gpio_vaild_fops, get_gpio_vaild, set_gpio_vaild, "%llu\n");
+
+static int get_pmic_mpp_vaild(void *data, u64 * val)
+{
+	int ret;
+
+	ret = is_pmic_mpp_suspend_valid;
+	*val = ret;
+	return 0;
+}
+
+static int set_pmic_mpp_vaild(void *data, u64 val)
+{
+	is_pmic_mpp_suspend_valid = (unsigned int)val;
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(pmic_mpp_vaild_fops, get_pmic_mpp_vaild, set_pmic_mpp_vaild, "%llu\n");
+//for runtime tunning
+
+static int gpio_msm_get_config(unsigned offset)
+{
+	int rc;
+	rc = __raw_readl(GPIO_CONFIG(offset));
+	mb();
+	return rc;
+}
+
+static int gpio_msm_get_inout(unsigned offset)
+{
+	int rc;
+	rc = __raw_readl(GPIO_IN_OUT(offset));
+	mb();
+	return rc;
+	
+}
+void gpio_msm_set_suspend_info(void)
+{
+	unsigned int i;
+	
+	for (i=0; i < NR_MSM_GPIOS; i++)
+	{
+		gpio_msm_suspend_cfg[i] = (unsigned int)gpio_msm_get_config(i);
+		gpio_msm_suspend_in_out[i] = (unsigned int)gpio_msm_get_inout(i);			
+	}
+
+	is_gpio_msm_suspend_valid = 1;
+}
+
+#if 0
+void gpio_pmic_set_suspend_info(void)
+{
+	unsigned	int i;
+
+	struct gpio_chip *pmic_gpio_chip = gpio_desc[NR_MSM_GPIOS].chip;
+	unsigned	pmic_gpio = pmic_gpio_chip->base;
+	struct gpio_desc *pmic_gpio_gdesc = &gpio_desc[pmic_gpio];
+
+	struct gpio_chip *pmic_mpp_chip = gpio_desc[NR_MSM_GPIOS + PM8x26_NR_GPIOS].chip; //modify for PM8x26
+	unsigned	pmic_mpp = pmic_mpp_chip->base;
+	struct gpio_desc *pmic_mpp_gdesc = &gpio_desc[pmic_mpp];
+
+	int is_out;
+
+	for (i = 0; i < pmic_gpio_chip->ngpio; i++, pmic_gpio++, pmic_gpio_gdesc++) 
+	{
+		is_out = test_bit(FLAG_IS_OUT, &pmic_gpio_gdesc->flags);
+		gpio_pmic_suspend_cfg[i] = pmic_gpio_chip->get(pmic_gpio_chip, i);
+		gpio_pmic_suspend_in_out[i] = is_out;
+	}
+
+	for (i = 0; i < pmic_mpp_chip->ngpio; i++, pmic_mpp++, pmic_mpp_gdesc++)
+	{
+		is_out = test_bit(FLAG_IS_OUT, &pmic_mpp_gdesc->flags);
+		mpp_pmic_suspend_cfg[i] = pmic_mpp_chip->get(pmic_mpp_chip, i);
+		mpp_pmic_suspend_in_out[i] = is_out;
+	}
+
+	is_pmic_mpp_suspend_valid = 1;
+}
+#endif
+static int print_gpio_msm_state(struct seq_file *s, void *unused)
+{
+	unsigned int i, gpio_oe, drv_strn, gpio_func, gpio_pull,in,out;
+	char out_pull[10];
+	char out_drv[10];
+	char out_out[5];
+	char out_in[5];
+	char oe[10];
+
+	seq_printf(s, "gpio-msm:   in/out     hi/lo   out_read   func   driver   pulltype\n");		
+	seq_printf(s, "==================================================================\n");		
+
+	if(is_gpio_msm_suspend_valid)
+		seq_printf(s, "suspend state:\n");
+	else
+		seq_printf(s, "current state:\n");		
+
+	for (i = 0; i < NR_MSM_GPIOS; i++)
+	{
+		unsigned int gpio_cfg, gpio_in_out;
+
+		if(is_gpio_msm_suspend_valid)
+		{
+			gpio_cfg = gpio_msm_suspend_cfg[i];
+			gpio_in_out = gpio_msm_suspend_in_out[i];		
+		} else {		
+			gpio_cfg = (unsigned int)gpio_msm_get_config(i);
+			gpio_in_out = (unsigned int)gpio_msm_get_inout(i);
+		}		
+
+		gpio_pull = gpio_cfg & 0x3;
+		gpio_func = (gpio_cfg & 0x3c)>>2;
+		drv_strn = (gpio_cfg & 0x1c0)>>6;
+		gpio_oe = (gpio_cfg & 0x200)>>9;
+		out = (gpio_in_out & 0x2)>>1;
+		in = gpio_in_out & 0x1;
+
+		switch (gpio_pull)
+		{
+			case 0:
+				sprintf(out_pull, "np");
+				break;
+			case 1:
+				sprintf(out_pull, "pd");
+				break;
+			case 2:
+				sprintf(out_pull, "kp");
+				break;
+			case 3:
+				sprintf(out_pull, "pu");
+				break;
+			default:
+				sprintf(out_pull, "na");
+		}
+		switch (drv_strn)
+		{
+			case 0:
+				sprintf(out_drv, "2");
+				break;
+			case 1:
+				sprintf(out_drv, "4");
+				break;
+			case 2:
+				sprintf(out_drv, "6");
+				break;
+			case 3:
+				sprintf(out_drv, "8");
+				break;
+			case 4:
+				sprintf(out_drv, "10");
+				break;
+			case 5:
+				sprintf(out_drv, "12");
+				break;
+			case 6:
+				sprintf(out_drv, "14");
+				break;
+			case 7:
+				sprintf(out_drv, "16");
+				break;
+			default:
+				sprintf(out_drv, "na");
+		}
+		switch (out) {
+			case 0:
+				sprintf(out_out, "lo");
+				break;
+			case 1:
+				sprintf(out_out, "hi");
+				break;
+		}
+		switch (in) {
+			case 0:
+				sprintf(out_in, "lo");
+				break;
+			case 1:
+				sprintf(out_in, "hi");
+				break;
+		}
+		switch (gpio_oe) {
+			case 0:
+			sprintf(oe, "in");
+				break;
+			case 1:
+				sprintf(oe, "out");
+				break;
+		}
+		//gpi_oe true , print gpio output 
+		if (gpio_oe)
+		{
+			seq_printf(s, "%4d      %4s    %4s       %4s       %4d %8s %8s\n", i, oe,out_out, out_in, gpio_func, out_drv, out_pull);
+		} else {
+			seq_printf(s, "%4d      %4s    %4s         na       %4d %8s %8s\n", i, oe,out_in             , gpio_func, out_drv, out_pull);
+		}
+	}
+
+	return 0;
+}
+
+#if 0
+static int print_gpio_pmic_mpp_state(struct seq_file *s, void *unused)
+{
+
+	unsigned int i=0 ; 
+	int is_out =0;	
+	struct gpio_chip *pmic_gpio_chip = gpio_desc[NR_MSM_GPIOS].chip;
+	unsigned	pmic_gpio = pmic_gpio_chip->base;
+	struct gpio_desc *pmic_gpio_gdesc = &gpio_desc[pmic_gpio];
+
+	struct gpio_chip *pmic_mpp_chip = gpio_desc[NR_MSM_GPIOS + PM8x26_NR_GPIOS].chip;//modify for PM8917
+	unsigned	pmic_mpp = pmic_mpp_chip->base;
+	struct gpio_desc *pmic_mpp_gdesc = &gpio_desc[pmic_mpp];
+
+	seq_printf(s, "gpio/mpp       in/out   hi/lo\n");		
+	seq_printf(s, "==============================\n");	
+
+	if(is_pmic_mpp_suspend_valid)
+		seq_printf(s, "suspend state:\n");
+	else
+		seq_printf(s, "current state:\n");
+	
+	if (is_pmic_mpp_suspend_valid)
+	{	
+		for (i=0; i < PM8x26_NR_GPIOS; i++)
+		{
+			seq_printf(s, "pm-gpio-%-3d %6s     %4s\n",
+				i,
+				gpio_pmic_suspend_in_out[i] ? "out" : "in",
+				gpio_pmic_suspend_cfg[i] ? "hi" : "lo"
+				);
+		}
+		for (i=0; i < PM8x26_NR_MPPS; i++)
+		{
+			seq_printf(s, "pm-mpp-%-3d %6s     %4s\n",
+				i,
+				mpp_pmic_suspend_in_out[i] ? "out" : "in",
+				mpp_pmic_suspend_cfg[i]? "hi" : "lo"
+				);
+		}
+	} else {
+		for (i = 0; i < pmic_gpio_chip->ngpio; i++, pmic_gpio++, pmic_gpio_gdesc++) 
+		{
+			is_out = test_bit(FLAG_IS_OUT, &pmic_gpio_gdesc->flags);
+			gpio_pmic_suspend_cfg[i] = pmic_gpio_chip->get(pmic_gpio_chip, i);
+			gpio_pmic_suspend_in_out[i] = is_out;
+			seq_printf(s, "pm-gpio-%-3d %6s     %4s\n",
+				i,
+				gpio_pmic_suspend_in_out[i] ? "out" : "in",
+				gpio_pmic_suspend_cfg[i]? "hi" : "lo"
+				);
+		}
+		for (i = 0; i < pmic_mpp_chip->ngpio; i++, pmic_mpp++, pmic_mpp_gdesc++)
+		{
+			is_out = test_bit(FLAG_IS_OUT, &pmic_mpp_gdesc->flags);
+			mpp_pmic_suspend_cfg[i] = pmic_mpp_chip->get(pmic_mpp_chip, i);
+			mpp_pmic_suspend_in_out[i] = is_out;
+			seq_printf(s, "pm-mpp-%-3d  %6s     %4s\n",
+				i,
+				gpio_pmic_suspend_in_out[i] ? "out" : "in",
+				gpio_pmic_suspend_cfg[i]? "hi" : "lo"
+				);
+		}
+	}
+	
+	return 0;
+}
+#endif
+
+static int gpio_suspend_info_suspend(void)
+{
+	gpio_msm_set_suspend_info();
+	//gpio_pmic_set_suspend_info();
+
+	return 0;
+}
+
+static void gpio_suspend_info_resume(void)
+{
+
+}
+
+static void gpio_suspend_info_dbg_show(struct seq_file *s)
+{
+	print_gpio_msm_state(s, NULL);
+	//print_gpio_pmic_mpp_state(s, NULL);
+}
+
+static struct suspend_info_ops gpio_suspend_info_ops = {
+	.suspend = gpio_suspend_info_suspend,
+	.resume = gpio_suspend_info_resume,
+	.dbg_show = gpio_suspend_info_dbg_show,
+};
+
+static int __init gpio_suspend_info_init(void)
+{
+	register_suspend_info_ops(&gpio_suspend_info_ops);
+	debugfs_create_file("gpio_valid", 0644, NULL, NULL, &gpio_vaild_fops);
+	debugfs_create_file("pmpp_valid", 0644, NULL, NULL, &pmic_mpp_vaild_fops);
+	return 0;
+}
+subsys_initcall(gpio_suspend_info_init);
+#endif
+/* KevinA_Lin 20140218*/

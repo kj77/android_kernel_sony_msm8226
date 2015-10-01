@@ -186,6 +186,12 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(scope),
 	POWER_SUPPLY_ATTR(system_temp_level),
 	POWER_SUPPLY_ATTR(resistance),
+// modified by YF-begin  
+#if defined(ORG_VER)  
+#else  
+	POWER_SUPPLY_ATTR(usb_present),  
+#endif  
+// modified by YF-end
 	/* Properties of type `const char *' */
 	POWER_SUPPLY_ATTR(model_name),
 	POWER_SUPPLY_ATTR(manufacturer),
@@ -265,6 +271,10 @@ int power_supply_uevent(struct device *dev, struct kobj_uevent_env *env)
 	int ret = 0, j;
 	char *prop_buf;
 	char *attrname;
+	/* [CCI] S- Bug#782 Jonny_Chan*/ 
+	char log_buf[512];
+	ssize_t cx = 0;	
+	/* [CCI] E- Bug#782 Jonny_Chan*/ 
 
 	dev_dbg(dev, "uevent\n");
 
@@ -283,6 +293,13 @@ int power_supply_uevent(struct device *dev, struct kobj_uevent_env *env)
 	if (!prop_buf)
 		return -ENOMEM;
 
+	/* [CCI] S- Bug#782 Jonny_Chan*/ 
+	cx = 0;
+	memset((void*) log_buf, 0x0, sizeof(log_buf));
+	if (strcmp(psy->name,"bms"))
+		cx += snprintf(log_buf+cx,sizeof(log_buf)-cx,"%s:",psy->name);	
+	/* [CCI] E- Bug#782 Jonny_Chan*/ 
+	
 	for (j = 0; j < psy->num_properties; j++) {
 		struct device_attribute *attr;
 		char *line;
@@ -316,8 +333,27 @@ int power_supply_uevent(struct device *dev, struct kobj_uevent_env *env)
 		kfree(attrname);
 		if (ret)
 			goto out;
+
+		/* [CCI] S- Bug#782 Jonny_Chan*/ 	
+		if (strcmp(psy->name,"bms"))
+			if (strcmp(attr->attr.name,"energy_full") && strcmp(attr->attr.name,"voltage_max_design") 
+				&& strcmp(attr->attr.name,"voltage_min_design")&& strcmp(attr->attr.name,"charge_now")
+				&& strcmp(attr->attr.name,"charge_full")&& strcmp(attr->attr.name,"current_max")
+				&& strcmp(attr->attr.name,"technology")&& strcmp(attr->attr.name,"voltage_min")
+				&& strcmp(attr->attr.name,"input_voltage_regulation")&& strcmp(attr->attr.name,"charge_full_design")
+				&& strcmp(attr->attr.name,"temp_cool")&& strcmp(attr->attr.name,"temp_warm")
+				&& strcmp(attr->attr.name,"system_temp_level")&& strcmp(attr->attr.name,"cycle_count")){
+				cx += snprintf(log_buf+cx,sizeof(log_buf)-cx,"%s=%s, ",attr->attr.name,prop_buf);
+		}
+		/* [CCI] E- Bug#782 Jonny_Chan*/ 
 	}
 
+	/* [CCI] S- Bug#782 Jonny_Chan*/ 	
+	if (strcmp(psy->name,"bms"))
+		//dev_info(dev, " %s\n",log_buf);
+		printk("[PS_uevent]  %s\n",log_buf);
+	/* [CCI] E- Bug#782 Jonny_Chan*/ 	
+		
 out:
 	free_page((unsigned long)prop_buf);
 

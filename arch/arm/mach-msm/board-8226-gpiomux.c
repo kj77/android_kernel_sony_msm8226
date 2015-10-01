@@ -25,6 +25,23 @@
 #define WLAN_DATA1	41
 #define WLAN_DATA2	40
 
+/*---------------------  Static Definitions -------------------------*/
+#define HENRY_DEBUG 1   //0:disable, 1:enable
+#if(HENRY_DEBUG)
+    #define Printhh(string, args...)    printk("henry(K)=> "string, ##args);
+#else
+    #define Printhh(string, args...)
+#endif
+
+#define HENRY_TIP 1 //give RD information. Set 1 if develop,and set 0 when release.
+#if(HENRY_TIP)
+    #define PrintTip(string, args...)    printk("henry(K)=> "string, ##args);
+#else
+    #define PrintTip(string, args...)
+#endif
+/*---------------------  Static Classes  ----------------------------*/
+
+
 #ifdef CONFIG_USB_EHCI_MSM_HSIC
 static struct gpiomux_setting hsic_sus_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
@@ -57,6 +74,35 @@ static struct msm_gpiomux_config msm_hsic_configs[] = {
 };
 #endif
 
+#define KS8851_IRQ_GPIO 115
+
+//S:EllenLu 20130709 ,[LED]add for SOMC Illumination
+static struct gpiomux_setting led_det_actv_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE, // Mike, shall be no pull
+	.dir = GPIOMUX_OUT_HIGH,
+};
+static struct gpiomux_setting led_det_susp_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+	.dir = GPIOMUX_OUT_LOW,
+};
+
+static struct msm_gpiomux_config msm8226_led_det_configs[] __initdata = {
+	{
+		.gpio      = 0, // The control pin.
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &led_det_actv_cfg,
+			[GPIOMUX_SUSPENDED] = &led_det_susp_cfg,
+		},
+	},
+};
+//E:EllenLu 20130709 ,[LED]add for SOMC Illumination
+
+/* Taylor 20150325 */
+#ifdef ORG_VER
 static struct gpiomux_setting smsc_hub_act_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_8MA,
@@ -92,6 +138,8 @@ static struct msm_gpiomux_config smsc_hub_configs[] = {
 		},
 	},
 };
+#else
+#endif
 
 #define KS8851_IRQ_GPIO 115
 
@@ -111,6 +159,152 @@ static struct msm_gpiomux_config msm_eth_configs[] = {
 	},
 };
 #endif
+
+//S:LO//hh
+static struct gpiomux_setting uim1_det_actv_cfg = {
+	.func = GPIOMUX_FUNC_1,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_UP,
+	.dir = GPIOMUX_IN,
+};
+static struct gpiomux_setting uim1_det_susp_cfg = {
+	.func = GPIOMUX_FUNC_1,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+	.dir = GPIOMUX_IN,
+};
+
+#ifdef CONFIG_SIM_DET_EAGLE_DS
+static struct gpiomux_setting uim2_det_actv_cfg = {
+	.func = GPIOMUX_FUNC_1,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_UP,
+	.dir = GPIOMUX_IN,
+};
+static struct gpiomux_setting uim2_det_susp_cfg = {
+	.func = GPIOMUX_FUNC_1,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+	.dir = GPIOMUX_IN,
+};
+#endif
+
+static struct msm_gpiomux_config msm8226_uim_det_configs[] __initdata = {
+	{
+		.gpio      = 60,
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &uim1_det_actv_cfg,
+			[GPIOMUX_SUSPENDED] = &uim1_det_susp_cfg,
+		},
+	},
+#ifdef CONFIG_SIM_DET_EAGLE_DS
+	{
+		.gpio      = 56,
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &uim2_det_actv_cfg,
+			[GPIOMUX_SUSPENDED] = &uim2_det_susp_cfg,
+		},
+	},
+#endif
+};
+//E:LO
+
+/* Chewei 20150409 S */
+
+static struct gpiomux_setting ovp_sus_config = {
+	.pull = GPIOMUX_PULL_NONE,
+	.drv = GPIOMUX_DRV_2MA,
+	.func = GPIOMUX_FUNC_GPIO,
+	.dir = GPIOMUX_IN,
+};
+
+static struct msm_gpiomux_config msm8226_ovp_configs[] = {
+	{
+		.gpio = 34,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &ovp_sus_config,
+		}
+	},
+};
+
+static struct gpiomux_setting hwid_gpio_config = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+	.dir = GPIOMUX_IN,
+};
+
+static struct msm_gpiomux_config msm8226_hwid_configs[] = {
+	/* Project ID */
+	{
+		.gpio = 2,
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &hwid_gpio_config,
+			[GPIOMUX_SUSPENDED] = &hwid_gpio_config,
+		},
+	},
+	{
+		.gpio = 3,
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &hwid_gpio_config,
+			[GPIOMUX_SUSPENDED] = &hwid_gpio_config,
+		},
+	},
+	/* HW ID */
+	{
+		.gpio = 50,
+		.settings = {
+			[GPIOMUX_ACTIVE]	 = &hwid_gpio_config,
+			[GPIOMUX_SUSPENDED] = &hwid_gpio_config,
+		},
+	},
+	{
+		.gpio = 1,
+		.settings = {
+			[GPIOMUX_ACTIVE]	 = &hwid_gpio_config,
+			[GPIOMUX_SUSPENDED] = &hwid_gpio_config,
+		},
+	},
+	{
+		.gpio = 116,
+		.settings = {
+			[GPIOMUX_ACTIVE]	 = &hwid_gpio_config,
+			[GPIOMUX_SUSPENDED] = &hwid_gpio_config,
+		},
+	},
+	/* SIM ID */
+	{
+		.gpio = 13,
+		.settings = {
+			[GPIOMUX_ACTIVE]	 = &hwid_gpio_config,
+			[GPIOMUX_SUSPENDED] = &hwid_gpio_config,
+		},
+	},
+	/* BAND ID*/
+	{
+		.gpio = 12,
+		.settings = {
+			[GPIOMUX_ACTIVE]	 = &hwid_gpio_config,
+			[GPIOMUX_SUSPENDED] = &hwid_gpio_config,
+		},
+	},
+	{
+		.gpio = 114,
+		.settings = {
+			[GPIOMUX_ACTIVE]	 = &hwid_gpio_config,
+			[GPIOMUX_SUSPENDED] = &hwid_gpio_config,
+		},
+	},
+	/* CUSTOMER ID*/
+	{
+		.gpio = 31,
+		.settings = {
+			[GPIOMUX_ACTIVE]	 = &hwid_gpio_config,
+			[GPIOMUX_SUSPENDED] = &hwid_gpio_config,
+		},
+	},
+};
+/* Chewei 20150409 E */
 
 static struct gpiomux_setting synaptics_int_act_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
@@ -135,7 +329,21 @@ static struct gpiomux_setting synaptics_reset_sus_cfg = {
 	.drv = GPIOMUX_DRV_2MA,
 	.pull = GPIOMUX_PULL_DOWN,
 };
-
+/*KevinA_Lin, 20150408 Implement side-key function S*/
+#ifdef ORG_VER
+#else
+static struct gpiomux_setting gpio_volume_keys_active = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_UP,
+};
+static struct gpiomux_setting gpio_volume_keys_suspend = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_UP,
+};
+#endif
+/*KevinA_Lin, 20150408 Implement side-key function E*/
 static struct gpiomux_setting gpio_keys_active = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_2MA,
@@ -148,6 +356,8 @@ static struct gpiomux_setting gpio_keys_suspend = {
 	.pull = GPIOMUX_PULL_NONE,
 };
 
+/* Chewei_Liang 20140207 */
+#ifdef ORG_VER
 static struct gpiomux_setting gpio_spi_act_config = {
 	.func = GPIOMUX_FUNC_1,
 	.drv = GPIOMUX_DRV_8MA,
@@ -170,6 +380,9 @@ static struct gpiomux_setting gpio_spi_cs_eth_config = {
 	.drv = GPIOMUX_DRV_6MA,
 	.pull = GPIOMUX_PULL_DOWN,
 };
+#else
+#endif
+/* Chewei_Liang 20140207 */
 
 static struct gpiomux_setting wcnss_5wire_suspend_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
@@ -202,6 +415,8 @@ static struct gpiomux_setting gpio_i2c_config = {
 };
 
 static struct msm_gpiomux_config msm_keypad_configs[] __initdata = {
+/*KevinA_Lin, 20150408 Implement side-key function S*/
+#ifdef ORG_VER
 	{
 		.gpio = 106,
 		.settings = {
@@ -209,6 +424,23 @@ static struct msm_gpiomux_config msm_keypad_configs[] __initdata = {
 			[GPIOMUX_SUSPENDED] = &gpio_keys_suspend,
 		},
 	},
+#else
+	{
+		.gpio = 106,
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &gpio_volume_keys_active,
+			[GPIOMUX_SUSPENDED] = &gpio_volume_keys_suspend,
+		},
+	},
+	{
+		.gpio = 109,
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &gpio_volume_keys_active,
+			[GPIOMUX_SUSPENDED] = &gpio_volume_keys_suspend,
+		},
+	},
+#endif
+/*KevinA_Lin, 20150408 Implement side-key function E*/
 	{
 		.gpio = 107,
 		.settings = {
@@ -256,6 +488,8 @@ static struct msm_gpiomux_config msm_lcd_configs[] __initdata = {
 };
 
 static struct msm_gpiomux_config msm_blsp_configs[] __initdata = {
+	/* Chewei_Liang 20140207 */
+	#ifdef ORG_VER
 	{
 		.gpio      = 0,		/* BLSP1 QUP1 SPI_DATA_MOSI */
 		.settings = {
@@ -277,6 +511,9 @@ static struct msm_gpiomux_config msm_blsp_configs[] __initdata = {
 			[GPIOMUX_SUSPENDED] = &gpio_spi_susp_config,
 		},
 	},
+	#else
+	#endif
+	/* Chewei_Liang 20140207 */
 	{
 		.gpio      = 14,	/* BLSP1 QUP4 I2C_SDA */
 		.settings = {
@@ -305,12 +542,31 @@ static struct msm_gpiomux_config msm_blsp_configs[] __initdata = {
 			[GPIOMUX_SUSPENDED] = &gpio_i2c_config,
 		},
 	},
+	/* Chewei_Liang 20140207 */
+	#ifdef ORG_VER
 	{
 		.gpio      = 22,		/* BLSP1 QUP1 SPI_CS_ETH */
 		.settings = {
 			[GPIOMUX_SUSPENDED] = &gpio_spi_cs_eth_config,
 		},
 	},
+	#else
+	#endif
+	/* Chewei_Liang 20140207 */
+	/*CCI, IO Sensor - Add sensor I2C bus BLSP2 S*/
+	{
+		.gpio      = 6,		/* BLSP1 QUP2 I2C_SDA */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_i2c_config,
+		},
+	},
+	{
+		.gpio      = 7,		/* BLSP1 QUP2 I2C_SCL */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_i2c_config,
+		},
+	},
+	/*CCI, IO Sensor - Add Sensor I2C bus BLSP2 E*/
 	{					/*  NFC   */
 		.gpio      = 10,		/* BLSP1 QUP3 I2C_DAT */
 		.settings = {
@@ -327,6 +583,8 @@ static struct msm_gpiomux_config msm_blsp_configs[] __initdata = {
 	},
 };
 
+/* Taylor 20115.325 */
+#ifdef ORG_VER
 static struct msm_gpiomux_config msm_blsp_spi_cs_config[] __initdata = {
 	{
 		.gpio      = 2,		/* BLSP1 QUP1 SPI_CS1 */
@@ -336,7 +594,8 @@ static struct msm_gpiomux_config msm_blsp_spi_cs_config[] __initdata = {
 		},
 	},
 };
-
+#else
+#endif
 static struct msm_gpiomux_config msm_synaptics_configs[] __initdata = {
 	{
 		.gpio = 16,
@@ -773,7 +1032,40 @@ static struct gpiomux_setting auxpcm_sus_cfg = {
 	.pull = GPIOMUX_PULL_DOWN,
 };
 
+//S [CCI]reset pin for compass YAS533
+static struct gpiomux_setting compass_rstn_act_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_UP,
+	.dir = GPIOMUX_OUT_HIGH,
+};
+
+static struct gpiomux_setting compass_rstn_sus_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_UP,
+	.dir = GPIOMUX_OUT_HIGH,
+};
+//E [CCI]reset pin for compass YAS533
+
+static struct gpiomux_setting compass_int_sus_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+};
+static struct gpiomux_setting acc_int_sus_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+};
+
 static struct msm_gpiomux_config msm_auxpcm_configs[] __initdata = {
+	{
+		.gpio = 49, /*ACCL_INT1_N*/
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &acc_int_sus_cfg,
+		},
+	},
 	{
 		.gpio = 63,
 		.settings = {
@@ -782,10 +1074,10 @@ static struct msm_gpiomux_config msm_auxpcm_configs[] __initdata = {
 		},
 	},
 	{
-		.gpio = 64,
+		.gpio = 64, /*COMPASS_RSTN*/
 		.settings = {
-			[GPIOMUX_SUSPENDED] = &auxpcm_sus_cfg,
-			[GPIOMUX_ACTIVE] = &auxpcm_act_cfg,
+			[GPIOMUX_SUSPENDED] = &compass_rstn_sus_cfg,
+			[GPIOMUX_ACTIVE] = &compass_rstn_act_cfg,
 		},
 	},
 	{
@@ -796,10 +1088,9 @@ static struct msm_gpiomux_config msm_auxpcm_configs[] __initdata = {
 		},
 	},
 	{
-		.gpio = 66,
+		.gpio = 66, /*MAG_INT_N*/
 		.settings = {
-			[GPIOMUX_SUSPENDED] = &auxpcm_sus_cfg,
-			[GPIOMUX_ACTIVE] = &auxpcm_act_cfg,
+			[GPIOMUX_SUSPENDED] = &compass_int_sus_cfg,
 		},
 	},
 };
@@ -926,9 +1217,13 @@ void __init msm8226_init_gpiomux(void)
 	else {
 		msm_gpiomux_install(msm_blsp_configs,
 			ARRAY_SIZE(msm_blsp_configs));
+		/* Taylor 20150325 */
+		#ifdef ORG_VER
 		if (machine_is_msm8226())
 			msm_gpiomux_install(msm_blsp_spi_cs_config,
 				ARRAY_SIZE(msm_blsp_spi_cs_config));
+		#else
+		#endif
 	}
 
 	msm_gpiomux_install(wcnss_5wire_interface,
@@ -946,6 +1241,17 @@ void __init msm8226_init_gpiomux(void)
 		msm_gpiomux_install(msm_skuf_nfc_configs,
 				ARRAY_SIZE(msm_skuf_nfc_configs));
 
+	//S:LO//hh
+	Printhh("[%s] enter..\n", __FUNCTION__);
+	msm_gpiomux_install(msm8226_uim_det_configs,
+			ARRAY_SIZE(msm8226_uim_det_configs));
+	//E:LO
+
+	//S:EllenLu 20130709 ,[LED]add for SOMC Illumination
+	msm_gpiomux_install(msm8226_led_det_configs,
+			ARRAY_SIZE(msm8226_led_det_configs));
+	//E:EllenLu 20130709 ,[LED]add for SOMC Illumination
+	
 	msm_gpiomux_install_nowrite(msm_lcd_configs,
 			ARRAY_SIZE(msm_lcd_configs));
 
@@ -954,6 +1260,13 @@ void __init msm8226_init_gpiomux(void)
 	if (of_board_is_skuf())
 		msm_gpiomux_install(msm_sensor_configs_skuf_plus,
 			ARRAY_SIZE(msm_sensor_configs_skuf_plus));
+
+	/* Chewei 20150409 */
+	msm_gpiomux_install(msm8226_hwid_configs,
+		ARRAY_SIZE(msm8226_hwid_configs));
+	msm_gpiomux_install(msm8226_ovp_configs,
+			ARRAY_SIZE(msm8226_ovp_configs));
+	/* Chewei 20150409 */
 
 	msm_gpiomux_install(msm_auxpcm_configs,
 			ARRAY_SIZE(msm_auxpcm_configs));
@@ -976,9 +1289,13 @@ void __init msm8226_init_gpiomux(void)
 	}
 	msm_gpiomux_install(msm_hsic_configs, ARRAY_SIZE(msm_hsic_configs));
 #endif
+	/* Taylor 20150325 */
+	#ifdef ORG_VER
 	if (machine_is_msm8926() && of_board_is_mtp())
 		msm_gpiomux_install(smsc_hub_configs,
 			ARRAY_SIZE(smsc_hub_configs));
+	#else
+	#endif
 }
 
 static void wcnss_switch_to_gpio(void)

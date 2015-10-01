@@ -401,6 +401,7 @@ struct msm_otg {
 #define B_BUS_REQ	16
 #define MHL	        17
 #define B_FALSE_SDP	18
+#define VBUS_DROP_DET  19
 	unsigned long inputs;
 	struct work_struct sm_work;
 	bool sm_work_pending;
@@ -471,6 +472,8 @@ struct msm_otg {
 	struct hrtimer timer;
 	enum usb_vdd_type vdd_type;
 	struct power_supply usb_psy;
+	struct power_supply *dc_psy;
+	bool vbus_active;
 	unsigned int online;
 	unsigned int host_mode;
 	unsigned int voltage_max;
@@ -644,5 +647,6 @@ static inline int msm_register_usb_ext_notification(
 {
 	return -ENODEV;
 }
+
 #endif
 #endif

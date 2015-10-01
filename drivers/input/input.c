@@ -83,6 +83,13 @@ static void input_pass_event(struct input_dev *dev,
 	rcu_read_lock();
 
 	handle = rcu_dereference(dev->grab);
+	/*KevinA_Lin, 20150408 Implement side-key function S*/
+	//for side key debug
+#ifndef ORG_VER
+	if (code==0x2fe || code==0x210 || code==114 || code==115 || code==116)
+		pr_info("%s():type=%d, code=%d , value=%d\n ", __func__, type, code, value);
+#endif
+	/*KevinA_Lin, 20150408 Implement side-key function E*/
 	if (handle)
 		handle->handler->event(handle, type, code, value);
 	else {
@@ -593,9 +600,18 @@ static void input_dev_release_keys(struct input_dev *dev)
 
 	if (is_event_supported(EV_KEY, dev->evbit, EV_MAX)) {
 		for (code = 0; code <= KEY_MAX; code++) {
+			/*KevinA_Lin, 20150408 Implement side-key function S*/
+			#ifdef ORG_VER
 			if (is_event_supported(code, dev->keybit, KEY_MAX) &&
 			    __test_and_clear_bit(code, dev->key)) {
 				input_pass_event(dev, EV_KEY, code, 0);
+			#else
+			/*Bypass camrea snapshot and focus event*/
+			if (is_event_supported(code, dev->keybit, KEY_MAX) &&
+			    __test_and_clear_bit(code, dev->key)&& (code!=528 && code!=766)) {
+				input_pass_event(dev, EV_KEY, code, 0);
+			#endif
+			/*KevinA_Lin, 20150408 Implement side-key function E*/
 			}
 		}
 		input_pass_event(dev, EV_SYN, SYN_REPORT, 1);
@@ -1816,7 +1832,7 @@ static void input_cleanse_bitmasks(struct input_dev *dev)
  */
 int input_register_device(struct input_dev *dev)
 {
-	static atomic_t input_no = ATOMIC_INIT(0);
+	static atomic_t input_no = ATOMIC_INIT(2);
 	struct input_handler *handler;
 	const char *path;
 	int error;
@@ -1852,8 +1868,18 @@ int input_register_device(struct input_dev *dev)
 	if (!dev->setkeycode)
 		dev->setkeycode = input_default_setkeycode;
 
-	dev_set_name(&dev->dev, "input%ld",
-		     (unsigned long) atomic_inc_return(&input_no) - 1);
+	/*
+	 *add input number by devices name, ALS as input0, PS as input1,
+	 *default from input2.
+	 */
+	if (sysfs_streq(dev->name, "lightsensor-level")) {
+		dev_set_name(&dev->dev, "input0");
+	} else if (sysfs_streq(dev->name, "proximity")) {
+		dev_set_name(&dev->dev, "input1");
+	} else {
+		dev_set_name(&dev->dev, "input%ld",
+			(unsigned long) atomic_inc_return(&input_no) - 1);
+	}
 
 	error = device_add(&dev->dev);
 	if (error)

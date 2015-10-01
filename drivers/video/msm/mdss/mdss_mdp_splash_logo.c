@@ -20,6 +20,8 @@
 #include <linux/bootmem.h>
 #include <linux/iommu.h>
 #include <linux/fb.h>
+#include <linux/delay.h>
+#include <linux/syscalls.h>
 
 #include "mdss_fb.h"
 #include "mdss_mdp.h"
@@ -28,6 +30,138 @@
 
 #define INVALID_PIPE_INDEX 0xFFFF
 #define MAX_FRAME_DONE_COUNT_WAIT 2
+
+#define fb_width(fb)	((fb)->var.xres)
+#define fb_linewidth(fb) \
+	((fb)->fix.line_length / (fb_depth(fb) == 2 ? 2 : 4))
+#define fb_height(fb)	((fb)->var.yres)
+#define fb_depth(fb)	((fb)->var.bits_per_pixel >> 3)
+#define fb_size(fb)	(fb_width(fb) * fb_height(fb) * fb_depth(fb))
+#define INIT_IMAGE_FILE "/logo.rle"
+static int splash_image_width;
+static int splash_image_height;
+static int splash_image_bpp;
+static unsigned char *orig_logo_bits;
+
+static void memset16(void *_ptr, unsigned short val, unsigned count)
+{
+	unsigned short *ptr = _ptr;
+	count >>= 1;
+	while (count--)
+		*ptr++ = val;
+}
+
+static void memset24(void *_ptr, unsigned int val, unsigned count)
+{
+	unsigned char *ptr = _ptr;
+	count >>= 2;
+	while (count--) {
+		*ptr++ = val & 0xff;
+		*ptr++ = (val & 0xff00) >> 8;
+		*ptr++ = (val & 0xff0000) >> 16;
+	}
+}
+
+/* 565RLE image format: [count(2 bytes), rle(2 bytes)] */
+static int load_565rle_to_bgr888(char *filename)
+{
+	struct fb_info *info;
+	int fd, err = 0;
+	unsigned count, max, width, stride, line_pos = 0;
+	unsigned short *data, *ptr;
+	unsigned char *bits;
+
+	info = registered_fb[0];
+	if (!info) {
+		printk(KERN_WARNING "%s: Can not access framebuffer\n",
+			__func__);
+		return -ENODEV;
+	}
+
+	fd = sys_open(filename, O_RDONLY, 0);
+	if (fd < 0) {
+		printk(KERN_WARNING "%s: Can not open %s\n",
+			__func__, filename);
+		return -ENOENT;
+	}
+	count = sys_lseek(fd, (off_t)0, 2);
+	if (count <= 0) {
+		err = -EIO;
+		goto err_logo_close_file;
+	}
+	sys_lseek(fd, (off_t)0, 0);
+	data = kmalloc(count, GFP_KERNEL);
+	if (!data) {
+		printk(KERN_WARNING "%s: Can not alloc data\n", __func__);
+		err = -ENOMEM;
+		goto err_logo_close_file;
+	}
+	if (sys_read(fd, (char *)data, count) != count) {
+		printk(KERN_WARNING "%s: Can not read data\n", __func__);
+		err = -EIO;
+		goto err_logo_free_data;
+	}
+	splash_image_width = width = fb_width(info);
+	splash_image_height = fb_height(info);
+	splash_image_bpp = 3;/*BGR888, not ABGR, not fb_depth(info)*/
+	stride = fb_width(info);/*stride = fb_linewidth(info);*/
+	max = width * fb_height(info);
+	ptr = data;
+	bits = orig_logo_bits = kmalloc(max * splash_image_bpp,
+		GFP_KERNEL);/*BGR888*/
+	if (!bits) {
+		printk(KERN_WARNING "%s: Can not alloc bits\n", __func__);
+		err = -ENOMEM;
+		goto err_logo_free_data;
+	}
+	printk(KERN_INFO "%s:width %d, height %d, BPP %d\n", __func__,
+		fb_width(info), fb_height(info), fb_depth(info));
+	while (count > 3) {
+		int n = ptr[0];
+
+		if (n > max)
+			break;
+		max -= n;
+		while (n > 0) {
+			unsigned int j =
+				(line_pos + n > width ? width-line_pos : n);
+
+			if (fb_depth(info) == 2)
+				memset16(bits, swab16(ptr[1]), j << 1);
+			else {
+				unsigned int widepixel = ptr[1];
+				/*
+				 * Format is RGBA, but fb is big
+				 * endian so we should make widepixel
+				 * as ABGR.
+				 */
+				widepixel =
+					/* red :   f800 -> 000000f8 */
+					(widepixel & 0xf800) >> 8 |
+					/* green : 07e0 -> 0000fc00 */
+					(widepixel & 0x07e0) << 5 |
+					/* blue :  001f -> 00f80000 */
+					(widepixel & 0x001f) << 19;
+				memset24(bits, widepixel, j << 2);/*BGR*/
+			}
+			bits += j * splash_image_bpp;
+			line_pos += j;
+			n -= j;
+			if (line_pos == width) {
+				bits += (stride-width) * splash_image_bpp;
+				line_pos = 0;
+			}
+		}
+		ptr += 2;
+		count -= 4;/*for RLE format*/
+	}
+err_logo_free_data:
+	kfree(data);
+err_logo_close_file:
+	sys_close(fd);
+
+	return err;
+}
 
 static int mdss_mdp_splash_alloc_memory(struct msm_fb_data_type *mfd,
 							uint32_t size)
@@ -122,14 +256,14 @@ static int mdss_mdp_splash_iommu_attach(struct msm_fb_data_type *mfd)
 		!mdss_mdp_iommu_dyn_attach_supported(mdp5_data->mdata) ||
 		!mdp5_data->splash_mem_addr ||
 		!mdp5_data->splash_mem_size) {
-		pr_debug("dynamic attach is not supported\n");
+		pr_err("dynamic attach is not supported\n");
 		return -EPERM;
 	}
 
 	domain = msm_get_iommu_domain(mdss_get_iommu_domain(
 						MDSS_IOMMU_DOMAIN_UNSECURE));
 	if (!domain) {
-		pr_debug("mdss iommu domain get failed\n");
+		pr_err("mdss iommu domain get failed\n");
 		return -EINVAL;
 	}
 
@@ -137,7 +271,7 @@ static int mdss_mdp_splash_iommu_attach(struct msm_fb_data_type *mfd)
 				mdp5_data->splash_mem_addr,
 				mdp5_data->splash_mem_size, IOMMU_READ);
 	if (rc) {
-		pr_debug("iommu memory mapping failed rc=%d\n", rc);
+		pr_err("iommu memory mapping failed rc=%d\n", rc);
 	} else {
 		ret = mdss_iommu_ctrl(1);
 		if (IS_ERR_VALUE(ret)) {
@@ -259,8 +393,8 @@ static struct mdss_mdp_pipe *mdss_mdp_splash_get_pipe(
 	struct mdss_mdp_pipe *pipe;
 	int ret;
 	struct mdss_mdp_data *buf;
-	uint32_t image_size = SPLASH_IMAGE_WIDTH * SPLASH_IMAGE_HEIGHT
-						* SPLASH_IMAGE_BPP;
+	uint32_t image_size = splash_image_width * splash_image_height
+						* splash_image_bpp;
 
 	ret = mdss_mdp_overlay_pipe_setup(mfd, req, &pipe);
 	if (ret)
@@ -393,12 +527,14 @@ static int mdss_mdp_display_splash_image(struct msm_fb_data_type *mfd)
 {
 	int rc = 0;
 	struct fb_info *fbi;
-	uint32_t image_len = SPLASH_IMAGE_WIDTH * SPLASH_IMAGE_HEIGHT
-						* SPLASH_IMAGE_BPP;
+	uint32_t image_len;
 	struct mdss_mdp_img_rect src_rect, dest_rect;
 	struct msm_fb_splash_info *sinfo;
 
-	if (!mfd || !mfd->fbi) {
+	load_565rle_to_bgr888(INIT_IMAGE_FILE);
+	image_len = splash_image_width * splash_image_height
+						* splash_image_bpp;
+	if (!mfd || !mfd->fbi || !orig_logo_bits) {
 		pr_err("invalid input parameter\n");
 		rc = -EINVAL;
 		goto end;
@@ -407,9 +543,9 @@ static int mdss_mdp_display_splash_image(struct msm_fb_data_type *mfd)
 	fbi = mfd->fbi;
 	sinfo = &mfd->splash_info;
 
-	if (SPLASH_IMAGE_WIDTH > fbi->var.xres ||
-		  SPLASH_IMAGE_HEIGHT > fbi->var.yres ||
-		  SPLASH_IMAGE_BPP > (fbi->var.bits_per_pixel >> 3)) {
+	if (splash_image_width > fbi->var.xres ||
+		  splash_image_height > fbi->var.yres ||
+		  splash_image_bpp > (fbi->var.bits_per_pixel >> 3)) {
 		pr_err("invalid splash parameter configuration\n");
 		rc = -EINVAL;
 		goto end;
@@ -420,10 +556,10 @@ static int mdss_mdp_display_splash_image(struct msm_fb_data_type *mfd)
 
 	src_rect.x = 0;
 	src_rect.y = 0;
-	dest_rect.w = src_rect.w = SPLASH_IMAGE_WIDTH;
-	dest_rect.h = src_rect.h = SPLASH_IMAGE_HEIGHT;
-	dest_rect.x = (fbi->var.xres >> 1) - (SPLASH_IMAGE_WIDTH >> 1);
-	dest_rect.y = (fbi->var.yres >> 1) - (SPLASH_IMAGE_HEIGHT >> 1);
+	dest_rect.w = src_rect.w = splash_image_width;
+	dest_rect.h = src_rect.h = splash_image_height;
+	dest_rect.x = (fbi->var.xres >> 1) - (splash_image_width >> 1);
+	dest_rect.y = (fbi->var.yres >> 1) - (splash_image_height >> 1);
 
 	rc = mdss_mdp_splash_alloc_memory(mfd, image_len);
 	if (rc) {
@@ -431,11 +567,11 @@ static int mdss_mdp_display_splash_image(struct msm_fb_data_type *mfd)
 		goto end;
 	}
 
-	memcpy(sinfo->splash_buffer, splash_bgr888_image, image_len);
+	memcpy(sinfo->splash_buffer, orig_logo_bits, image_len);
 
 	rc = mdss_mdp_splash_iommu_attach(mfd);
 	if (rc)
-		pr_debug("iommu dynamic attach failed\n");
+		pr_err("iommu dynamic attach failed\n");
 
 	rc = mdss_mdp_splash_kickoff(mfd, &src_rect, &dest_rect);
 	if (rc)
@@ -443,6 +579,7 @@ static int mdss_mdp_display_splash_image(struct msm_fb_data_type *mfd)
 	else
 		sinfo->splash_pipe_allocated = true;
 end:
+	kfree(orig_logo_bits);
 	return rc;
 }
 
@@ -493,6 +630,13 @@ static int mdss_mdp_splash_thread(void *data)
 
 	lock_fb_info(mfd->fbi);
 	ret = fb_blank(mfd->fbi, FB_BLANK_UNBLANK);
+
+        pr_info("LCM reboot for truly panel");
+        usleep(1000);
+	    ret = fb_blank(mfd->fbi, FB_BLANK_POWERDOWN);
+        usleep(1000);
+	    ret = fb_blank(mfd->fbi, FB_BLANK_UNBLANK);
+
 	if (ret) {
 		pr_err("can't turn on fb!\n");
 		goto end;
@@ -543,7 +687,7 @@ static __ref int mdss_mdp_splash_parse_dt(struct msm_fb_data_type *mfd)
 
 	of_find_property(pdev->dev.of_node, "qcom,memblock-reserve", &len);
 	if (len < 1) {
-		pr_debug("mem reservation for splash screen fb not present\n");
+		pr_err("mem reservation for splash screen fb not present\n");
 		rc = -EINVAL;
 		goto error;
 	}
@@ -553,25 +697,25 @@ static __ref int mdss_mdp_splash_parse_dt(struct msm_fb_data_type *mfd)
 	rc = of_property_read_u32_array(pdev->dev.of_node,
 			"qcom,memblock-reserve", offsets, len);
 	if (rc) {
-		pr_debug("error reading mem reserve settings for fb\n");
+		pr_err("error reading mem reserve settings for fb\n");
 		goto error;
 	}
 
 	if (!memblock_is_reserved(offsets[0])) {
-		pr_debug("failed to reserve memory for fb splash\n");
+		pr_err("failed to reserve memory for fb splash\n");
 		rc = -EINVAL;
 		goto error;
 	}
 
 	mdp5_mdata->splash_mem_addr = offsets[0];
 	mdp5_mdata->splash_mem_size = offsets[1];
-	pr_debug("memaddr=%x size=%x\n", mdp5_mdata->splash_mem_addr,
+	pr_info("memaddr=%x size=%x\n", mdp5_mdata->splash_mem_addr,
 		mdp5_mdata->splash_mem_size);
 
 error:
 	if (!rc && !mfd->panel_info->cont_splash_enabled &&
 		mdp5_mdata->splash_mem_addr) {
-		pr_debug("mem reservation not reqd if cont splash disabled\n");
+		pr_err("mem reservation not reqd if cont splash disabled\n");
 		memblock_free(mdp5_mdata->splash_mem_addr,
 					mdp5_mdata->splash_mem_size);
 		free_bootmem_late(mdp5_mdata->splash_mem_addr,
@@ -599,6 +743,8 @@ int mdss_mdp_splash_init(struct msm_fb_data_type *mfd)
 		pr_err("splash memory reserve failed\n");
 		goto end;
 	}
+
+    pr_info("mdss_mdp_splash_init() splash_logo_enabled=%d",mfd->splash_info.splash_logo_enabled);
 
 	if (!mfd->splash_info.splash_logo_enabled) {
 		rc = -EINVAL;

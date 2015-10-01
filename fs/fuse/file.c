@@ -694,6 +694,7 @@ static int fuse_readpages_fill(void *_data, struct page *page)
 
 		lru_cache_add_file(newpage);
 
+
 		/* finally release the old page and swap pointers */
 		unlock_page(oldpage);
 		page_cache_release(oldpage);
