@@ -4230,7 +4230,14 @@ static int setup_die_temp_monitoring(struct qpnp_bms_chip *chip)
 	pr_debug("setup complete\n");
 	return 0;
 }
+/* [CCI] S- Bug# Jonny_Chan*/
+static char FuelGauge_drv_FW_version[] = "0001";
 
+char * get_FuelGauge_drv_version(void)
+{
+	return FuelGauge_drv_FW_version;
+}
+/* [CCI] E- Bug# Jonny_Chan*/
 static int __devinit qpnp_bms_probe(struct spmi_device *spmi)
 {
 	struct qpnp_bms_chip *chip;
