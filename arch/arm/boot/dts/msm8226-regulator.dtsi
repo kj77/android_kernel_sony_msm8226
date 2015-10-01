@@ -247,9 +247,9 @@
 		status = "okay";
 		pm8226_l5: regulator-l5 {
 			regulator-name = "8226_l5";
-			regulator-min-microvolt = <1200000>;
+			regulator-min-microvolt = <1050000>;
 			regulator-max-microvolt = <1200000>;
-			qcom,init-voltage = <1200000>;
+			qcom,init-voltage = <1050000>;
 			status = "okay";
 		};
 	};
@@ -485,9 +485,9 @@
 		status = "okay";
 		pm8226_l27: regulator-l27 {
 			regulator-name = "8226_l27";
-			regulator-min-microvolt = <2050000>;
-			regulator-max-microvolt = <2050000>;
-			qcom,init-voltage = <2050000>;
+			regulator-min-microvolt = <2100000>;
+			regulator-max-microvolt = <2100000>;
+			qcom,init-voltage = <2100000>;
 			status = "okay";
 		};
 	};
@@ -498,7 +498,7 @@
 			regulator-name = "8226_l28";
 			regulator-min-microvolt = <1800000>;
 			regulator-max-microvolt = <2950000>;
-			qcom,init-voltage = <2950000>;
+			qcom,init-voltage = <2850000>;
 			status = "okay";
 		};
 	};

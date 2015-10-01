@@ -10,6 +10,8 @@
  * GNU General Public License for more details.
  */
 
+/include/ "dsi-panel-innolux-qhd-video.dtsi"
+/include/ "dsi-panel-truly-qhd-video.dtsi"
 /include/ "msm8226-camera-sensor-mtp.dtsi"
 
 &soc {
@@ -33,6 +35,106 @@
 			synaptics,power-down;
 			synaptics,disable-gpios;
 		};
+		cypress@24 {
+			compatible = "cy,cyttsp4_i2c_adapter";
+			reg = <0x24>;
+			interrupt-patent = <&msmgpio>;
+			interrupts = <17 0x8>;
+			cy,adapter_id = "cyttsp4_i2c_adapter";
+			vdd-supply = <&pm8226_l19>;
+			vcc_i2c-supply = <&pm8226_lvs1>;
+			vdd_l27-supply = <&pm8226_l27>;
+
+			cy,core {
+				cy,name = "cyttsp4_core";
+				cy,id = "main_ttsp_core";
+
+				cy,irq_gpio = <17>;
+				cy,rst_gpio = <16>;
+
+				/* Enable cy,max_xfer_len to limit max I2C/SPI transfer length */
+				/* cy,max_xfer_len = <0x100>; */
+
+				/* CY_CORE_FLAG_WAKE_ON_GESTURE */
+				cy,flags = <1>;
+				/* CY_CORE_EWG_TAP_TAP | CY_CORE_EWG_TWO_FINGER_SLIDE */
+				cy,easy_wakeup_gesture = <3>;
+				cy,btn_keys = <102 /* KEY_HOME */
+						139 /* KEY_MENU */
+						158 /* KEY_BACK */
+						217 /* KEY_SEARCH */
+						114 /* KEY_VOLUMEDOWN */
+						115 /* KEY_VOLUMEUP */
+						212 /* KEY_CAMERA */
+						116>; /* KEY_POWER */
+				cy,btn_keys-tag = <0>;
+
+				cy,mt {
+					cy,name = "cyttsp4_mt";
+					cy,inp_dev_name = "cyttsp4_mt";
+					/* CY_MT_FLAG_FLIP | CY_MT_FLAG_INV_X | CY_MT_FLAG_INV_Y */
+					cy,flags = <0x30>;
+					cy,abs =
+						/* ABS_MT_POSITION_X, CY_ABS_MIN_X, CY_ABS_MAX_X, 0, 0 */
+						<0x35 0 540 0 0
+						/* ABS_MT_POSITION_Y, CY_ABS_MIN_Y, CY_ABS_MAX_Y, 0, 0 */
+						0x36 0 960 0 0
+						/* ABS_MT_PRESSURE, CY_ABS_MIN_P, CY_ABS_MAX_P, 0, 0 */
+						0x3a 0 255 0 0
+						/* CY_IGNORE_VALUE, CY_ABS_MIN_W, CY_ABS_MAX_W, 0, 0 */
+						0xffff 0 255 0 0
+						/* ABS_MT_TRACKING_ID, CY_ABS_MIN_T, CY_ABS_MAX_T, 0, 0 */
+						0x39 0 15 0 0
+						/* ABS_MT_TOUCH_MAJOR, 0, 255, 0, 0 */
+						0x30 0 255 0 0
+						/* ABS_MT_TOUCH_MINOR, 0, 255, 0, 0 */
+						0x31 0 255 0 0
+						/* ABS_MT_ORIENTATION, -128, 127, 0, 0 */
+						0x34 0xfffffed7 127 0 0>;
+
+					cy,vkeys_x = <540>;
+					cy,vkeys_y = <960>;
+
+					cy,virtual_keys = /* KeyCode CenterX CenterY Width Height */
+						/* KEY_BACK */
+						<158 1360 90 160 180
+						/* KEY_MENU */
+						139 1360 270 160 180
+						/* KEY_HOME */
+						102 1360 450 160 180
+						/* KEY SEARCH */
+						217 1360 630 160 180>;
+				};
+			};
+		};
+	};
+
+	i2c@f9924000 { /* BLSP1 QUP2 */
+		yas532@2e {
+			compatible = "qcom,yas532";
+			reg = <0x2e>;
+			vdd-supply = <&pm8226_l19>;
+			vddio-supply = <&pm8226_lvs1>;
+		};
+		kxtj2@0f {
+			compatible = "qcom,kxtj2";
+			reg = <0x0f>;
+			vdd-supply = <&pm8226_l19>;
+			vddio-supply = <&pm8226_lvs1>;
+		};
+		mmc3416x@30 {
+			compatible = "qcom,mmc3416x";
+			reg = <0x30>;
+			vdd-supply = <&pm8226_l19>;
+			vddio-supply = <&pm8226_lvs1>;
+		};
+		stk_ps@48 {
+			compatible = "qcom,stk_ps";
+			reg = <0x48>;
+			vdd_ana-supply = <&pm8226_l19>;
+			vcc_i2c-supply = <&pm8226_lvs1>;
+                };
+
 	};
 
 	i2c@f9925000 { /* BLSP1 QUP3 */
@@ -48,16 +150,17 @@
 			qcom,clk-gpio = <&pm8226_gpios 3 0>;
 		};
 	};
-	gpio_keys {
+	gpio_keys_evt { /* KevinA_Lin, 20150408 Implement side-key function */ 
 		compatible = "gpio-keys";
 		input-name = "gpio-keys";
+		hwid-type = <0>;
 
 		camera_focus {
 			label = "camera_focus";
 			gpios = <&msmgpio 108 0x1>;
 			linux,input-type = <1>;
 			linux,code = <0x210>;
-			gpio-key,wakeup;
+			//gpio-key,wakeup;
 			debounce-interval = <15>;
 		};
 
@@ -70,15 +173,64 @@
 			debounce-interval = <15>;
 		};
 
-		vol_up {
-			label = "volume_up";
-			gpios = <&msmgpio 106 0x1>;
+		vol_down {
+			label = "volume_down";
+			gpios = <&msmgpio 109 0x1>;
 			linux,input-type = <1>;
-			linux,code = <115>;
+			linux,code = <114>;
 			gpio-key,wakeup;
 			debounce-interval = <15>;
 		};
 	};
+	gpio_keys_dvt { /* KevinA_Lin, 20150408 Implement side-key function */  
+		compatible = "gpio-keys";
+		input-name = "gpio-keys";
+		hwid-type = <1>;
+
+		camera_focus {
+			label = "camera_focus";
+			gpios = <&msmgpio 108 0x1>;
+			linux,input-type = <1>;
+			linux,code = <0x210>;
+			//gpio-key,wakeup;
+			debounce-interval = <15>;
+		};
+
+		camera_snapshot {
+			label = "camera_snapshot";
+			gpios = <&msmgpio 107 0x1>;
+			linux,input-type = <1>;
+			linux,code = <0x2fe>;
+			gpio-key,wakeup;
+			debounce-interval = <15>;
+		};
+
+		vol_down {
+			label = "volume_down";
+			gpios = <&msmgpio 106 0x1>;
+			linux,input-type = <1>;
+			linux,code = <114>;
+			gpio-key,wakeup;
+			debounce-interval = <15>;
+		};
+	};
+
+/* Chewei, 20150408 */
+/* Band_id: <&msmgpio 114 0> "gpio_band_id_2" is not used */
+	gpio_hwid {
+		compatible = "gpio-hwid";
+		cci,project_id-gpios = <&msmgpio 3 0>, <&msmgpio 2 0>;
+		cci,project_id-gpio_labels = "gpio_project_id_1", "gpio_project_id_2";
+		cci,hw_id-gpios = <&msmgpio 50 0>, <&msmgpio 1 0>, <&msmgpio 116 0>;
+		cci,hw_id-gpio_labels =	"gpio_hw_id_1", "gpio_hw_id_2", "gpio_hw_id_3";
+		cci,sim_id-gpios = <&msmgpio 13 0>;
+		cci,sim_id-gpio_labels = "gpio_sim_id";
+		cci,band_id-gpios = <&msmgpio 12 0>;
+		cci,band_id-gpio_labels = "gpio_band_id_1";
+		cci,customer_id-gpios = <&msmgpio 31 0>;
+		cci,customer_id-gpio_labels = "gpio_customer_id";
+	};
+/* Chewei, 20150408 */
 
 	spi@f9923000 {
 		ethernet-switch@3 {
@@ -119,8 +271,10 @@
 			"LDO_H", "MCLK",
 			"SPK_OUT", "MCLK",
 			"SPK_OUT", "EXT_VDD_SPKR",
-			"AMIC1", "MIC BIAS1 Internal1",
-			"MIC BIAS1 Internal1", "Handset Mic",
+			/* BAM_S: B2956 20150408 change setting for hw design */
+			"AMIC1", "MIC BIAS1 External",
+			"MIC BIAS1 External", "Handset Mic",
+			/* BAM_E: B2956 20150408 */
 			"AMIC2", "MIC BIAS2 External",
 			"MIC BIAS2 External", "Headset Mic",
 			"AMIC3", "MIC BIAS1 External",
@@ -264,15 +418,25 @@
 			status = "okay";
 			qcom,led_mpp_2 {
 				label = "mpp";
-				linux,name = "button-backlight";
+				linux,name = "rgb_blue";
 				linux,default-trigger = "none";
 				qcom,default-state = "off";
 				qcom,max-current = <40>;
 				qcom,current-setting = <5>;
 				qcom,id = <6>;
-				qcom,mode = "manual";
-				qcom,source-sel = <1>;
+				qcom,mode = "pwm";
+				qcom,pwm-us = <1000>;
+				qcom,source-sel = <14>;
 				qcom,mode-ctrl = <0x60>;
+				qcom,pwm-channel = <3>;
+				qcom,start-idx = <1>;
+				qcom,ramp-step-ms = <120>;
+				qcom,duty-pcts = [00 00 00 00 00
+						00 00 00 00 00
+						50 00 00 00 00
+						00 00 00 00 00
+						00];
+				qcom,use-blink;
 			};
 		};
 
@@ -280,8 +444,8 @@
 			status = "okay";
 			qcom,led_mpp_4 {
 				label = "mpp";
-				linux,name = "green";
-				linux,default-trigger = "battery-full";
+				linux,name = "rgb_green";
+				linux,default-trigger = "none";
 				qcom,default-state = "off";
 				qcom,max-current = <40>;
 				qcom,current-setting = <5>;
@@ -299,7 +463,6 @@
 						  00 00 00 00 00
 						  00];
 				qcom,use-blink;
-				qcom,in-order-command-processing;
 			};
 		};
 
@@ -307,8 +470,8 @@
 			status = "okay";
 			qcom,led_mpp_6 {
 				label = "mpp";
-				linux,name = "red";
-				linux,default-trigger = "battery-charging";
+				linux,name = "rgb_red";
+				linux,default-trigger = "none";
 				qcom,default-state = "off";
 				qcom,max-current = <40>;
 				qcom,current-setting = <5>;
@@ -326,7 +489,6 @@
 						  00 00 00 00 00
 						  00];
 				qcom,use-blink;
-				qcom,in-order-command-processing;
 			};
 		};
 	};
@@ -493,7 +655,7 @@
 };
 
 &pm8226_chg {
-	qcom,charging-disabled;
+	/*qcom,charging-disabled;*/	/*[Bug1036] Jonny_Chan */
 	qcom,battery-data = <&mtp_batterydata>;
 };
 
@@ -509,9 +671,14 @@
 };
 
 &mdss_dsi0 {
-	qcom,dsi-pref-prim-pan = <&dsi_nt35590_720_vid>;
+  qcom,dsi-pref-prim-pan1 = <&dsi_innolux_qhd_vid>;
+  qcom,dsi-pref-prim-pan2 = <&dsi_truly_qhd_vid>;
 };
 
-&dsi_nt35590_720_vid {
-	qcom,cont-splash-enabled;
+&dsi_innolux_qhd_vid {
+  qcom,cont-splash-disabled;
+};
+
+&dsi_truly_qhd_vid {
+  qcom,cont-splash-disabled;
 };

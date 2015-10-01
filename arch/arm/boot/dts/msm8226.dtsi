@@ -1,4 +1,5 @@
 /* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013 Sony Mobile Communications Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -278,7 +279,7 @@
 		qcom,vdd-voltage-level = <1 5 7>;
 
 		qcom,hsusb-otg-phy-init-seq =
-			<0x44 0x80 0x68 0x81 0x24 0x82 0x13 0x83 0xffffffff>;
+			<0x44 0x80 0x56 0x81 0x20 0x82 0x13 0x83 0xffffffff>;
 		qcom,hsusb-otg-phy-type = <2>;
 		qcom,hsusb-otg-mode = <1>;
 		qcom,hsusb-otg-otg-control = <2>;
@@ -300,7 +301,7 @@
 		reg = <0xfe8050c8 0xc8>;
 		qcom,android-usb-swfi-latency = <1>;
 		qcom,streaming-func = "rndis";
-		qcom,android-usb-uicc-nluns = <1>;
+		qcom,android-usb-uicc-nluns = <0>;
 	};
 
 	smsc_hub: hsic_hub {
@@ -766,6 +767,12 @@
 		reg-names = "rfsa_mdm";
 	};
 
+	smem_sharedmem {
+		compatible = "qcom,sharedmem-uio";
+		reg = <0x0fa00000 0x00200000>;
+		reg-names = "smem";
+	};
+
 	sdcc1: qcom,sdcc@f9824000 {
 		cell-index = <1>; /* SDC1 eMMC slot */
 		compatible = "qcom,msm-sdcc";
@@ -989,6 +996,19 @@
 		qcom,pmic-arb-channel = <0>;
 	};
 
+        i2c_1: i2c@f9924000 { /* BLSP-1 QUP-2 */
+                cell-index = <1>;
+                compatible = "qcom,i2c-qup";
+                reg = <0xf9924000 0x1000>;
+                #address-cells = <1>;
+                #size-cells = <0>;
+                reg-names = "qup_phys_addr";
+                interrupts = <0 96 0>;
+                interrupt-names = "qup_err_intr";
+		qcom,i2c-bus-freq = <384000>;
+                qcom,i2c-src-freq = <19200000>;
+        };
+
 	i2c@f9925000 { /* BLSP-1 QUP-3 */
 		cell-index = <2>;
 		compatible = "qcom,i2c-qup";
@@ -1099,6 +1119,21 @@
 			qcom,ocmem-part-min = <0x20000>;
 		};
 	};
+
+       
+       i2c@f9925000 { /* BLSP-1 QUP-3 */
+       nfc547@28 {
+			compatible = "nxp,pn547";
+			reg = <0x28>;
+			gpios = <&msmgpio 20 0>, <&msmgpio 22 0>;
+			interrupt-parent = <&msmgpio> ;
+			interrupts = <21 0x2>;
+			ven-gpio = <&msmgpio 20 0x00>;
+			irq-gpio = <&msmgpio 21 0x00>;
+			dl-gpio = <&msmgpio 22 0x00>;
+	
+		};
+       };
 
 	qcom,venus@fdce0000 {
 		compatible = "qcom,pil-venus";
@@ -1256,6 +1291,9 @@
 		qcom,bam-consumer-pipe-index = <12>;
 		qcom,bam-producer-pipe-index = <13>;
 		qcom,master-id = <86>;
+		/* 20150409 Chewei */
+		status = "disabled";
+		/* 20150409 Chewei */
 	};
 
 	qcom,bam_dmux@fc834000 {
@@ -1391,11 +1429,27 @@
 		interrupts = <1 7 0xf00>;
 	};
 
+	sony,ric_info {
+		compatible = "sony_ric";
+		sony,num-partition = <4>;
+		sony,partition-names = "system", "userdata", "cache", "apps_log";
+		sony,mount_paths = "/system", "/data", "/cache", "/mnt/idd";
+		sony,mount-flags = <0x1 0x6 0x6 0xE>;
+	};
+
 	bimc_sharedmem {
 		compatible = "qcom,sharedmem-uio";
 		reg = <0xfc380000 0x00100000>;
 		reg-names = "bimc";
 	};
+	
+	/* CCI: Mike, add new illumination controller/chip */
+	cci,illumination_led@0 {
+		compatible = "kinet,ktd2024";
+		label = "illumination_led";
+		/* cci,enable_gpio = <62>; */
+		cci,control_gpio = <0>;
+	};	
 };
 
 &gdsc_venus {
