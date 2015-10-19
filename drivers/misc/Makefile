@@ -77,4 +77,4 @@ obj-$(CONFIG_QPNP_MISC) += qpnp-misc.o
 obj-$(CONFIG_RAMDUMP_TAGS) += rdtags.o
 obj-$(CONFIG_NXP_NFC_PN547)	+= pn547.o
 obj-$(CONFIG_CRASH_LAST_LOGS) += lastlogs.o
-
+obj-$(CONFIG_UID_CPUTIME) 	+= uid_cputime.o
