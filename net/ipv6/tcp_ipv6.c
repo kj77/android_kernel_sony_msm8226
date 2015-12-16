@@ -2123,11 +2123,7 @@ struct proto tcpv6_prot = {
 #ifdef CONFIG_CGROUP_MEM_RES_CTLR_KMEM
 	.proto_cgroup		= tcp_proto_cgroup,
 #endif
-<<<<<<< HEAD
-=======
-	.clear_sk		= tcp_v6_clear_sk,
 	.diag_destroy		= tcp_abort,
->>>>>>> 91fa25c... net: diag: Support destroying TCP sockets.
 };
 
 static const struct inet6_protocol tcpv6_protocol = {
