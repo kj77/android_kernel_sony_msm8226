@@ -511,11 +511,9 @@ static int q6lsm_memory_map_regions(struct lsm_client *client,
 	int rc;
 	int cmd_size = 0;
 
-	pr_debug("%s: dma_addr_p 0x%pa, dma_buf_sz %d, mmap_p 0x%p, session %d\n",
-		__func__, &dma_addr_p, dma_buf_sz, mmap_p,
-		client->session);
-	if (CHECK_SESSION(client->session))
-		return -EINVAL;
+	pr_debug("%s: dma_addr_p 0x%x, dma_buf_sz %d, mmap_p 0x%pK, session %d\n",
+		 __func__, dma_addr_p, dma_buf_sz, mmap_p, client->session);
+
 	cmd_size = sizeof(struct avs_cmd_shared_mem_map_regions) +
 		   sizeof(struct avs_shared_map_region_payload);
 
