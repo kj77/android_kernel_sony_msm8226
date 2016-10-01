@@ -5,6 +5,10 @@
 menu "Near Field Communication (NFC) devices"
 	depends on NFC
 
+config NXP_NFC_PN547
+	tristate "NFC PN547 Driver"
+	default n
+
 config PN544_NFC
 	tristate "PN544 NFC driver"
 	depends on I2C
