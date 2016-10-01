@@ -2786,6 +2786,13 @@ static inline int __mdss_mdp_ctl_get_mixer_off(struct mdss_mdp_mixer *mixer)
 	}
 }
 
+//S [VVVV] JackBB 2013/8/9
+int check_mdss_mdp_mfd_index(struct msm_fb_data_type *mfd)
+{
+  return mfd->index;
+}
+//E [VVVV] JackBB 2013/8/9
+
 static int __mdss_mdp_mixer_handoff_helper(struct mdss_mdp_mixer *mixer,
 	struct mdss_mdp_pipe *pipe)
 {

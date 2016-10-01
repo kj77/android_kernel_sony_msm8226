@@ -77,7 +77,7 @@ static struct msm_mdp_interface *mdp_instance;
 static int mdss_fb_register(struct msm_fb_data_type *mfd);
 static int mdss_fb_open(struct fb_info *info, int user);
 static int mdss_fb_release(struct fb_info *info, int user);
-static int mdss_fb_release_all(struct fb_info *info, bool release_all);
+static int mdss_fb_release_all(struct fb_info *info, bool release_all,int user);//[VVVV] JackBB 2013/12/05 Fix no free pipe
 static int mdss_fb_pan_display(struct fb_var_screeninfo *var,
 			       struct fb_info *info);
 static int mdss_fb_check_var(struct fb_var_screeninfo *var,
@@ -554,7 +554,7 @@ static void mdss_fb_shutdown(struct platform_device *pdev)
 
 	mfd->shutdown_pending = true;
 	lock_fb_info(mfd->fbi);
-	mdss_fb_release_all(mfd->fbi, true);
+	mdss_fb_release_all(mfd->fbi, true,1);//[VVVV] JackBB 2013/12/05
 	unlock_fb_info(mfd->fbi);
 }
 
@@ -964,25 +964,23 @@ void mdss_fb_update_backlight(struct msm_fb_data_type *mfd)
 	u32 temp;
 	bool bl_notify = false;
 
-	if (mfd->unset_bl_level) {
-		mutex_lock(&mfd->bl_lock);
-		if (!mfd->bl_updated) {
-			pdata = dev_get_platdata(&mfd->pdev->dev);
-			if ((pdata) && (pdata->set_backlight)) {
-				mfd->bl_level = mfd->unset_bl_level;
-				temp = mfd->bl_level;
-				if (mfd->mdp.ad_calc_bl)
-					(*mfd->mdp.ad_calc_bl)(mfd, temp, &temp,
-								&bl_notify);
-				if (bl_notify)
-					mdss_fb_bl_update_notify(mfd);
-				pdata->set_backlight(pdata, temp);
-				mfd->bl_level_scaled = mfd->unset_bl_level;
-				mfd->bl_updated = 1;
-			}
+	mutex_lock(&mfd->bl_lock);
+	if (mfd->unset_bl_level && !mfd->bl_updated) {
+		pdata = dev_get_platdata(&mfd->pdev->dev);
+		if ((pdata) && (pdata->set_backlight)) {
+			mfd->bl_level = mfd->unset_bl_level;
+			temp = mfd->bl_level;
+			if (mfd->mdp.ad_calc_bl)
+				(*mfd->mdp.ad_calc_bl)(mfd, temp, &temp,
+						&bl_notify);
+			if (bl_notify)
+				mdss_fb_bl_update_notify(mfd);
+			pdata->set_backlight(pdata, temp);
+			mfd->bl_level_scaled = mfd->unset_bl_level;
+			mfd->bl_updated = 1;
 		}
-		mutex_unlock(&mfd->bl_lock);
 	}
+	mutex_unlock(&mfd->bl_lock);
 }
 
 static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
@@ -1402,10 +1400,18 @@ static int mdss_fb_alloc_fbmem_iommu(struct msm_fb_data_type *mfd, int dom)
 	fbmem_pnode = of_parse_phandle(pdev->dev.of_node,
 		"linux,contiguous-region", 0);
 	if (!fbmem_pnode) {
-		pr_debug("fbmem is not reserved for %s\n", pdev->name);
-		mfd->fbi->screen_base = NULL;
-		mfd->fbi->fix.smem_start = 0;
-		return 0;
+		pr_info("fbmem is not reserved for %s\n", pdev->name);
+
+	    if (of_property_read_u32(pdev->dev.of_node,
+				     "qcom,memory-reservation-size",
+				 &size) || !size)
+        {
+            pr_info("qcom,memory-reservation-size error for %s\n", pdev->name);
+		    mfd->fbi->screen_base = NULL;
+		    mfd->fbi->fix.smem_start = 0;
+		    mfd->fbi->fix.smem_len = 0;
+		    return 0;
+        }
 	} else {
 		const u32 *addr;
 		u64 len;
@@ -1420,7 +1426,7 @@ static int mdss_fb_alloc_fbmem_iommu(struct msm_fb_data_type *mfd, int dom)
 		of_node_put(fbmem_pnode);
 	}
 
-	pr_debug("%s frame buffer reserve_size=0x%zx\n", __func__, size);
+	pr_info("%s frame buffer reserve_size=0x%zx\n", __func__, size);
 
 	if (size < PAGE_ALIGN(mfd->fbi->fix.line_length *
 			      mfd->fbi->var.yres_virtual))
@@ -1449,13 +1455,14 @@ static int mdss_fb_alloc_fbmem_iommu(struct msm_fb_data_type *mfd, int dom)
 
 static int mdss_fb_alloc_fbmem(struct msm_fb_data_type *mfd)
 {
-
 	if (mfd->mdp.fb_mem_alloc_fnc) {
 		return mfd->mdp.fb_mem_alloc_fnc(mfd);
 	} else if (mfd->mdp.fb_mem_get_iommu_domain) {
 		int dom = mfd->mdp.fb_mem_get_iommu_domain();
 		if (dom >= 0)
+        {
 			return mdss_fb_alloc_fbmem_iommu(mfd, dom);
+        }
 		else
 			return -ENOMEM;
 	} else {
@@ -1705,6 +1712,13 @@ static int mdss_fb_open(struct fb_info *info, int user)
 	int pid = current->tgid;
 	struct task_struct *task = current->group_leader;
 
+//S [VVVV] JackBB 2013/11/7
+  if(user == 0)
+  {
+    pr_info("mdss_fb_open() user=%d ",user);
+  }
+//E [VVVV] JackBB 2013/11/7
+
 	if (mfd->shutdown_pending) {
 		pr_err("Shutdown pending. Aborting operation. Request from pid:%d name=%s\n",
 				pid, task->comm);
@@ -1775,7 +1789,7 @@ pm_error:
 	return result;
 }
 
-static int mdss_fb_release_all(struct fb_info *info, bool release_all)
+static int mdss_fb_release_all(struct fb_info *info, bool release_all, int user)//[VVVV] JackBB 2013/12/05 Fix no free pipe
 {
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
 	struct mdss_fb_proc_info *pinfo = NULL, *temp_pinfo = NULL;
@@ -1783,6 +1797,13 @@ static int mdss_fb_release_all(struct fb_info *info, bool release_all)
 	int pid = current->tgid;
 	bool unknown_pid = true, release_needed = false;
 	struct task_struct *task = current->group_leader;
+
+//S [VVVV] JackBB 2013/11/7
+  if(user == 0)
+  {
+    pr_info("mdss_fb_release() user=%d",user);
+  }
+//E [VVVV] JackBB 2013/11/7
 
 	if (!mfd->ref_cnt) {
 		pr_info("try to close unopened fb %d! from %s\n", mfd->index,
@@ -1834,6 +1855,13 @@ static int mdss_fb_release_all(struct fb_info *info, bool release_all)
 		if (!release_all)
 			break;
 	}
+
+//S [VVVV] JackBB 2013/11/7
+	if(user == 0)
+	{
+		release_all = true;
+	}
+//E [VVVV] JackBB 2013/11/7
 
 	if (release_needed) {
 		pr_debug("known process %s pid=%d mfd->ref=%d\n",
@@ -1898,7 +1926,7 @@ static int mdss_fb_release_all(struct fb_info *info, bool release_all)
 
 static int mdss_fb_release(struct fb_info *info, int user)
 {
-	return mdss_fb_release_all(info, false);
+	return mdss_fb_release_all(info, false,user);//[VVVV] JackBB 2013/12/05
 }
 
 static void mdss_fb_power_setting_idle(struct msm_fb_data_type *mfd)
