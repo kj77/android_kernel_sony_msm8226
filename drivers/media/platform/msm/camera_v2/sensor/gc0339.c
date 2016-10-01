@@ -30,6 +30,11 @@ DEFINE_MSM_MUTEX(gc0339_mut);
 
 static struct msm_sensor_ctrl_t gc0339_s_ctrl;
 
+#ifdef CONFIG_SONY_CAM_QCAMERA
+static struct msm_sensor_ctrl_t gc0339_power_on;
+static struct msm_sensor_ctrl_t gc0339_power_off;
+#endif
+
 static struct msm_sensor_power_setting gc0339_power_setting[] = {
 
 	{
@@ -82,6 +87,104 @@ static struct msm_sensor_power_setting gc0339_power_setting[] = {
 	},
 };
 
+#ifdef CONFIG_SONY_CAM_QCAMERA
+static struct msm_sensor_power_setting gc0339_power_on_setting[] = {
+		{/* 1. PDN "L" */
+			.seq_type = SENSOR_GPIO,
+			.seq_val = SENSOR_GPIO_STANDBY,
+			.config_val = GPIO_OUT_LOW,
+			.delay = 0,
+		},
+		{/* 2. MCLK */
+			.seq_type = SENSOR_CLK,
+			.seq_val = SENSOR_CAM_MCLK,
+			.config_val = 24000000,
+			.delay = 1,
+		},
+		{/* 3. LVS */
+			.seq_type = SENSOR_VREG,
+			.seq_val = CAM_VIO,
+			.config_val = 0,
+			.delay = 0,
+		},
+		{/* 4. VANA */
+			.seq_type = SENSOR_VREG,
+			.seq_val = CAM_VANA,
+			.config_val = 0,
+			.delay = 0,
+		},
+		{/* 5. MVDD */
+			.seq_type = SENSOR_GPIO,
+			.seq_val = SENSOR_GPIO_VIO,
+			.config_val = GPIO_OUT_HIGH,
+			.delay = 0,
+		},
+		{/* 6. Reset "L" */
+			.seq_type = SENSOR_GPIO,
+			.seq_val = SENSOR_GPIO_RESET,
+			.config_val = GPIO_OUT_LOW,
+			.delay = 0,
+		},
+		{/* 7. Reset "H" */
+			.seq_type = SENSOR_GPIO,
+			.seq_val = SENSOR_GPIO_RESET,
+			.config_val = GPIO_OUT_HIGH,
+			.delay = 1,
+		},
+};
+
+static struct msm_sensor_power_setting gc0339_power_off_setting[] = {
+		{/* 8. MCLK */
+			.seq_type = SENSOR_CLK,
+			.seq_val = SENSOR_CAM_MCLK,
+			.config_val = 24000000,
+			.delay = 0,
+		},
+		{/* 7. MVDD */
+			.seq_type = SENSOR_GPIO,
+			.seq_val = SENSOR_GPIO_VIO,
+			.config_val = GPIO_OUT_HIGH,
+			.delay = 0,
+		},
+		{/* 6. LVS */
+			.seq_type = SENSOR_VREG,
+			.seq_val = CAM_VIO,
+			.config_val = 0,
+			.delay = 0,
+		},
+		{/* 5.VANA */
+			.seq_type = SENSOR_VREG,
+			.seq_val = CAM_VANA,
+			.config_val = 0,
+			.delay = 0,
+		},
+		{/* 4. Reset "L" */
+			.seq_type = SENSOR_GPIO,
+			.seq_val = SENSOR_GPIO_RESET,
+			.config_val = GPIO_OUT_LOW,
+			.delay = 0,
+		},
+		{/* 3.PDN "H" */
+			.seq_type = SENSOR_GPIO,
+			.seq_val = SENSOR_GPIO_STANDBY,
+			.config_val = GPIO_OUT_HIGH,
+			.delay = 0,
+		},
+		{/* 2. Reset "H" */
+			.seq_type = SENSOR_GPIO,
+			.seq_val = SENSOR_GPIO_RESET,
+			.config_val = GPIO_OUT_HIGH,
+			.delay = 0,
+		},
+		{/* 1. Reset "L" */
+			.seq_type = SENSOR_GPIO,
+			.seq_val = SENSOR_GPIO_RESET,
+			.config_val = GPIO_OUT_LOW,
+			.delay = 0,
+		},
+};
+#endif
+
 static struct v4l2_subdev_info gc0339_subdev_info[] = {
 	{
 		.code   = V4L2_MBUS_FMT_SBGGR10_1X10,
@@ -124,7 +227,12 @@ int32_t gc0339_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 	struct msm_camera_gpio_conf *gpio_conf = power_info->gpio_conf;
 
 	CDBG("%s:%d\n", __func__, __LINE__);
+
+#ifdef CONFIG_SONY_CAM_QCAMERA
+	power_setting_array = &gc0339_power_on.power_setting_array;
+#else
 	power_setting_array = &s_ctrl->power_setting_array;
+#endif
 
 	if (gpio_conf->cam_gpiomux_conf_tbl != NULL) {
 		pr_err("%s:%d mux install\n", __func__, __LINE__);
@@ -298,8 +406,24 @@ int32_t gc0339_power_down(struct msm_sensor_ctrl_t *s_ctrl)
 	struct msm_camera_gpio_conf *gpio_conf = power_info->gpio_conf;
 
 	CDBG("%s:%d\n", __func__, __LINE__);
-	power_setting_array = &s_ctrl->power_setting_array;
 
+#ifdef CONFIG_SONY_CAM_QCAMERA
+	power_setting_array = &gc0339_power_off.power_setting_array;
+#else
+	power_setting_array = &s_ctrl->power_setting_array;
+#endif
+
+#ifdef CONFIG_SONY_CAM_QCAMERA
+	s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
+		s_ctrl->sensor_i2c_client,
+		0xfc,
+		0x01, MSM_CAMERA_I2C_BYTE_DATA);
+
+	if (s_ctrl->sensor_device_type == MSM_CAMERA_PLATFORM_DEVICE) {
+		s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_util(
+			s_ctrl->sensor_i2c_client, MSM_CCI_RELEASE);
+	}
+#else
 	if (s_ctrl->sensor_device_type == MSM_CAMERA_PLATFORM_DEVICE) {
 		s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_util(
 			s_ctrl->sensor_i2c_client, MSM_CCI_RELEASE);
@@ -309,6 +433,7 @@ int32_t gc0339_power_down(struct msm_sensor_ctrl_t *s_ctrl)
 		s_ctrl->sensor_i2c_client,
 		0xfc,
 		0x01, MSM_CAMERA_I2C_BYTE_DATA);
+#endif
 
 	for (index = (power_setting_array->size - 1); index >= 0; index--) {
 		CDBG("%s index %d\n", __func__, index);
@@ -316,11 +441,21 @@ int32_t gc0339_power_down(struct msm_sensor_ctrl_t *s_ctrl)
 		CDBG("%s type %d\n", __func__, power_setting->seq_type);
 		switch (power_setting->seq_type) {
 		case SENSOR_CLK:
+#ifdef CONFIG_SONY_CAM_QCAMERA
+			msm_cam_clk_enable(power_info->dev,
+				&power_info->clk_info[0],
+				(struct clk **)&gc0339_power_on.
+				power_setting_array.
+				power_setting[index + 1].data[0],
+				power_info->clk_info_size,
+				0);
+#else
 			msm_cam_clk_enable(power_info->dev,
 				&power_info->clk_info[0],
 				(struct clk **)&power_setting->data[0],
 				power_info->clk_info_size,
 				0);
+#endif
 			break;
 		case SENSOR_GPIO:
 			if (power_setting->seq_val >= SENSOR_GPIO_MAX ||
@@ -344,11 +479,21 @@ int32_t gc0339_power_down(struct msm_sensor_ctrl_t *s_ctrl)
 					SENSOR_GPIO_MAX);
 				continue;
 			}
+#ifdef CONFIG_SONY_CAM_QCAMERA
+			msm_camera_config_single_vreg(power_info->dev,
+				&power_info->cam_vreg[power_setting->seq_val],
+				(struct regulator **)&gc0339_power_on.
+				power_setting_array.
+				power_setting[index].data[0],
+				0);
+			break;
+#else
 			msm_camera_config_single_vreg(power_info->dev,
 				&power_info->cam_vreg[power_setting->seq_val],
 				(struct regulator **)&power_setting->data[0],
 				0);
 			break;
+#endif
 		default:
 			pr_err("%s error power seq type %d\n", __func__,
 				power_setting->seq_type);
@@ -372,7 +517,11 @@ int32_t gc0339_match_id(struct msm_sensor_ctrl_t *s_ctrl)
 {
 	int32_t rc = 0;
 	uint16_t chipid = 0;
-
+#ifdef CONFIG_SONY_CAM_QCAMERA
+	uint16_t camID_GPIO = 115;
+	int32_t subcamID = 1;
+	static uint8_t checksubcam_ID;
+#endif
 	rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_read(
 			s_ctrl->sensor_i2c_client,
 			s_ctrl->sensordata->slave_info->sensor_id_reg_addr,
@@ -382,6 +531,42 @@ int32_t gc0339_match_id(struct msm_sensor_ctrl_t *s_ctrl)
 			s_ctrl->sensordata->sensor_name);
 		return rc;
 	}
+
+#ifdef CONFIG_SONY_CAM_QCAMERA
+	if (checksubcam_ID == 0) {
+		if (!strncmp(s_ctrl->sensordata->sensor_name,
+			"SKUAA_ST_gc0339_sensor", 22)) {
+			rc = gpio_request(camID_GPIO, NULL);
+			if (rc) {
+				pr_err("%s: Failed to request gpio %d\n",
+					__func__, camID_GPIO);
+				gpio_free(camID_GPIO);
+				return rc;
+			}
+			gpio_direction_input(camID_GPIO);
+			subcamID = gpio_get_value(camID_GPIO);
+			if (subcamID == 0) {
+				snprintf((char *)s_ctrl->sensordata->
+						sensor_name, 16, "%s",
+						"SKUAA_ST_gc0339");
+			} else if (subcamID == 1) {
+				snprintf((char *)s_ctrl->sensordata->
+						sensor_name, 19, "%s",
+						"SKUAA_ST_gc0339sec");
+			} else {
+				pr_err("%s: sub camera pin %d is wrong!\n",
+					__func__, subcamID);
+				gpio_free(camID_GPIO);
+				return -ENODEV;
+			}
+			gpio_free(camID_GPIO);
+
+			pr_err("%s: sub camera sensor name = %s\n", __func__,
+					s_ctrl->sensordata->sensor_name);
+		}
+		checksubcam_ID++;
+	}
+#endif
 
 	if (chipid != s_ctrl->sensordata->slave_info->sensor_id) {
 		pr_err("msm_sensor_match_id chip id doesnot match\n");
@@ -411,6 +596,12 @@ int32_t gc0339_config(struct msm_sensor_ctrl_t *s_ctrl,
 			s_ctrl->sensordata->sensor_info->is_mount_angle_valid;
 		cdata->cfg.sensor_info.sensor_mount_angle =
 			s_ctrl->sensordata->sensor_info->sensor_mount_angle;
+#ifdef CONFIG_SONY_CAM_QCAMERA
+		cdata->cfg.sensor_info.position =
+			s_ctrl->sensordata->sensor_info->position;
+		cdata->cfg.sensor_info.modes_supported =
+			s_ctrl->sensordata->sensor_info->modes_supported;
+#endif
 		CDBG("%s:%d sensor name %s\n", __func__, __LINE__,
 			cdata->cfg.sensor_info.sensor_name);
 		CDBG("%s:%d session id %d\n", __func__, __LINE__,
@@ -663,6 +854,17 @@ static struct msm_sensor_ctrl_t gc0339_s_ctrl = {
 	.sensor_v4l2_subdev_info_size = ARRAY_SIZE(gc0339_subdev_info),
 	.func_tbl = &gc0339_sensor_fn_t,
 };
+
+#ifdef CONFIG_SONY_CAM_QCAMERA
+static struct msm_sensor_ctrl_t gc0339_power_on = {
+	.power_setting_array.power_setting = gc0339_power_on_setting,
+	.power_setting_array.size = ARRAY_SIZE(gc0339_power_on_setting),
+};
+static struct msm_sensor_ctrl_t gc0339_power_off = {
+	.power_setting_array.power_setting = gc0339_power_off_setting,
+	.power_setting_array.size = ARRAY_SIZE(gc0339_power_off_setting),
+};
+#endif
 
 static const struct of_device_id gc0339_dt_match[] = {
 	{.compatible = "shinetech,gc0339", .data = &gc0339_s_ctrl},
