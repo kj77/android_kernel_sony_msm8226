@@ -89,13 +89,13 @@
 
 //S:LO//hh
 #define GPIO_SW_UIM1_DET    60
-#ifdef CCI_SIM_DET_EAGLE_DS
+#ifdef CONFIG_SIM_DET_EAGLE_DS
 #define GPIO_SW_UIM2_DET    56
 #endif
 
 static struct gpio_event_direct_entry gpio_sw_gpio_map[] = {
 	{GPIO_SW_UIM1_DET, SW_JACK_PHYSICAL_INSERT},
-#ifdef CCI_SIM_DET_EAGLE_DS
+#ifdef CONFIG_SIM_DET_EAGLE_DS
 	{GPIO_SW_UIM2_DET, SW_JACK_PHYSICAL_INSERT},
 #endif
 };
