@@ -28,11 +28,26 @@ enum led_brightness {
 	LED_FULL	= 255,
 };
 
+enum led_op_mode {
+	mode_1 = 1, //LED blink
+};
+
+enum led_op_onms {
+	blink_onMS = 0,
+};
+
+enum led_op_offms {
+	blink_offMS = 0,
+};
+
 struct led_classdev {
 	const char		*name;
 	int			 brightness;
 	int			 max_brightness;
 	int			 flags;
+	int			flashmode;
+	int			onMS;
+	int			offMS;
 
 	/* Lower 16 bits reflect status */
 #define LED_SUSPENDED		(1 << 0)
@@ -45,6 +60,18 @@ struct led_classdev {
 					  enum led_brightness brightness);
 	/* Get LED brightness level */
 	enum led_brightness (*brightness_get)(struct led_classdev *led_cdev);
+
+	void		(*mode_set)(struct led_classdev *led_cdev,
+					  enum led_op_mode flashmode);
+	enum led_op_mode (*mode_get)(struct led_classdev *led_cdev);
+
+	void		(*blinkonms_set)(struct led_classdev *led_cdev,
+					  enum led_op_onms onMS);
+	enum led_op_onms (*onms_get)(struct led_classdev *led_cdev);
+
+	void		(*blinkoffms_set)(struct led_classdev *led_cdev,
+					  enum led_op_offms offMS);
+	enum led_op_offms (*offms_get)(struct led_classdev *led_cdev);
 
 	/*
 	 * Activate hardware accelerated blink, delays are in milliseconds
