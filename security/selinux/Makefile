@@ -1,4 +1,4 @@
- #
+#
 # Makefile for building the SELinux module as part of the kernel tree.
 #
 
@@ -8,8 +8,6 @@ selinux-y := avc.o hooks.o selinuxfs.o netlink.o nlmsgtab.o netif.o \
 	     netnode.o netport.o exports.o \
 	     ss/ebitmap.o ss/hashtab.o ss/symtab.o ss/sidtab.o ss/avtab.o \
 	     ss/policydb.o ss/services.o ss/conditional.o ss/mls.o ss/status.o
-
-selinux-$(CONFIG_SECURITY_SELINUX_TRAP) += trap.o
 
 selinux-$(CONFIG_SECURITY_NETWORK_XFRM) += xfrm.o
 
