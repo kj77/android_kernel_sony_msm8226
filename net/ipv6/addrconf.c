@@ -602,7 +602,7 @@ static u32 ipv6_addr_hash(const struct in6_addr *addr)
 
 static struct inet6_ifaddr *
 ipv6_add_addr(struct inet6_dev *idev, const struct in6_addr *addr, int pfxlen,
-	      int scope, u32 flags,  u32 valid_lft, u32 prefered_lft)
+	      int scope, u32 flags)
 {
 	struct inet6_ifaddr *ifa = NULL;
 	struct rt6_info *rt;
@@ -660,8 +660,6 @@ ipv6_add_addr(struct inet6_dev *idev, const struct in6_addr *addr, int pfxlen,
 	ifa->scope = scope;
 	ifa->prefix_len = pfxlen;
 	ifa->flags = flags | IFA_F_TENTATIVE;
-	ifa->valid_lft = valid_lft;
-	ifa->prefered_lft = prefered_lft;
 	ifa->cstamp = ifa->tstamp = jiffies;
 
 	ifa->rt = rt;
@@ -920,8 +918,7 @@ retry:
 	      ipv6_count_addresses(idev) < max_addresses ?
 		ipv6_add_addr(idev, &addr, tmp_plen,
 			      ipv6_addr_type(&addr)&IPV6_ADDR_SCOPE_MASK,
-			      addr_flags,
-			      tmp_valid_lft, tmp_prefered_lft) : NULL;
+			      addr_flags) : NULL;
 	if (!ift || IS_ERR(ift)) {
 		in6_ifa_put(ifp);
 		in6_dev_put(idev);
@@ -934,6 +931,8 @@ retry:
 
 	spin_lock_bh(&ift->lock);
 	ift->ifpub = ifp;
+	ift->valid_lft = tmp_valid_lft;
+	ift->prefered_lft = tmp_prefered_lft;
 	ift->cstamp = now;
 	ift->tstamp = tmp_tstamp;
 	spin_unlock_bh(&ift->lock);
@@ -1995,16 +1994,14 @@ ok:
 			    ipv6_count_addresses(in6_dev) < max_addresses)
 				ifp = ipv6_add_addr(in6_dev, &addr, pinfo->prefix_len,
 						    addr_type&IPV6_ADDR_SCOPE_MASK,
-						    addr_flags, valid_lft,
-						    prefered_lft);
+						    addr_flags);
 
 			if (!ifp || IS_ERR(ifp)) {
 				in6_dev_put(in6_dev);
 				return;
 			}
 
-			update_lft = 0;
-			create = 1;
+			update_lft = create = 1;
 			ifp->cstamp = jiffies;
 			addrconf_dad_start(ifp, RTF_ADDRCONF|RTF_PREFIX_RT);
 		}
@@ -2024,7 +2021,7 @@ ok:
 				stored_lft = ifp->valid_lft - (now - ifp->tstamp) / HZ;
 			else
 				stored_lft = 0;
-			if (!update_lft && !create && stored_lft) {
+			if (!update_lft && stored_lft) {
 				if (valid_lft > MIN_VALID_LIFETIME ||
 				    valid_lft > stored_lft)
 					update_lft = 1;
@@ -2269,10 +2266,15 @@ static int inet6_addr_add(struct net *net, int ifindex, const struct in6_addr *p
 		prefered_lft = timeout;
 	}
 
-	ifp = ipv6_add_addr(idev, pfx, plen, scope, ifa_flags,
-			    valid_lft, prefered_lft);
+	ifp = ipv6_add_addr(idev, pfx, plen, scope, ifa_flags);
 
 	if (!IS_ERR(ifp)) {
+		spin_lock_bh(&ifp->lock);
+		ifp->valid_lft = valid_lft;
+		ifp->prefered_lft = prefered_lft;
+		ifp->tstamp = jiffies;
+		spin_unlock_bh(&ifp->lock);
+
 		addrconf_prefix_route(&ifp->addr, ifp->prefix_len, dev,
 				      expires, flags);
 		/*
@@ -2370,8 +2372,7 @@ static void add_addr(struct inet6_dev *idev, const struct in6_addr *addr,
 {
 	struct inet6_ifaddr *ifp;
 
-	ifp = ipv6_add_addr(idev, addr, plen,
-			    scope, IFA_F_PERMANENT, 0, 0);
+	ifp = ipv6_add_addr(idev, addr, plen, scope, IFA_F_PERMANENT);
 	if (!IS_ERR(ifp)) {
 		spin_lock_bh(&ifp->lock);
 		ifp->flags &= ~IFA_F_TENTATIVE;
@@ -2465,7 +2466,7 @@ static void addrconf_add_linklocal(struct inet6_dev *idev, const struct in6_addr
 #endif
 
 
-	ifp = ipv6_add_addr(idev, addr, 64, IFA_LINK, addr_flags, 0, 0);
+	ifp = ipv6_add_addr(idev, addr, 64, IFA_LINK, addr_flags);
 	if (!IS_ERR(ifp)) {
 		addrconf_prefix_route(&ifp->addr, ifp->prefix_len, idev->dev, 0, 0);
 		addrconf_dad_start(ifp, 0);
@@ -2888,10 +2889,11 @@ static int addrconf_ifdown(struct net_device *dev, int how)
 
 	write_unlock_bh(&idev->lock);
 
-	/* Step 5: Discard multicast list */
-	if (how)
+	/* Step 5: Discard anycast and multicast list */
+	if (how) {
+		ipv6_ac_destroy_dev(idev);
 		ipv6_mc_destroy_dev(idev);
-	else
+	} else {
 		ipv6_mc_down(idev);
 	}
 
