@@ -574,7 +574,7 @@ static int qpnp_wled_set(struct qpnp_led_data *led)
 
 	num_wled_strings = led->wled_cfg->num_strings;
 
-	level = led->cdev.brightness;
+	level = 0;
 
 	if (level > WLED_MAX_LEVEL)
 		level = WLED_MAX_LEVEL;

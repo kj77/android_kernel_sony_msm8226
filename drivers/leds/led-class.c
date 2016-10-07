@@ -92,10 +92,127 @@ static ssize_t led_max_brightness_show(struct device *dev,
 	return snprintf(buf, LED_BUFF_SIZE, "%u\n", led_cdev->max_brightness);
 }
 
+static void led_update_flashmode(struct led_classdev *led_cdev)
+{
+	if (led_cdev->mode_get)
+		led_cdev->flashmode = led_cdev->mode_get(led_cdev);
+}
+
+static ssize_t led_mode_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct led_classdev *led_cdev = dev_get_drvdata(dev);
+
+	/* no lock needed for this */
+	led_update_flashmode(led_cdev);
+
+	return snprintf(buf, LED_BUFF_SIZE, "%u\n", led_cdev->flashmode);
+}
+
+static ssize_t led_mode_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	ssize_t ret = -EINVAL;
+	struct led_classdev *led_cdev = dev_get_drvdata(dev);
+	char *after;
+	unsigned long state = simple_strtoul(buf, &after, 10);
+	size_t count = after - buf;
+
+	if (isspace(*after))
+		count++;
+
+	if (count == size)
+	{
+		ret = count;
+		led_set_flashmode(led_cdev, state);
+	}
+
+	return ret;
+}
+
+static void led_update_onms(struct led_classdev *led_cdev)
+{
+	if (led_cdev->onms_get)
+		led_cdev->onMS = led_cdev->onms_get(led_cdev);
+}
+
+static ssize_t led_onms_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct led_classdev *led_cdev = dev_get_drvdata(dev);
+
+	/* no lock needed for this */
+	led_update_onms(led_cdev);
+
+	return snprintf(buf, LED_BUFF_SIZE, "%u\n", led_cdev->onMS);
+}
+
+static ssize_t led_onms_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	ssize_t ret = -EINVAL;
+	struct led_classdev *led_cdev = dev_get_drvdata(dev);
+	char *after;
+	unsigned long state = simple_strtoul(buf, &after, 10);
+	size_t count = after - buf;
+
+	if (isspace(*after))
+		count++;
+
+	if (count == size)
+	{
+		ret = count;
+		led_set_onms(led_cdev, state);
+	}
+
+	return ret;
+}
+
+static void led_update_offms(struct led_classdev *led_cdev)
+{
+	if (led_cdev->offms_get)
+		led_cdev->offMS = led_cdev->offms_get(led_cdev);
+}
+
+static ssize_t led_offms_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct led_classdev *led_cdev = dev_get_drvdata(dev);
+
+	/* no lock needed for this */
+	led_update_offms(led_cdev);
+
+	return snprintf(buf, LED_BUFF_SIZE, "%u\n", led_cdev->offMS);
+}
+
+static ssize_t led_offms_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	ssize_t ret = -EINVAL;
+	struct led_classdev *led_cdev = dev_get_drvdata(dev);
+	char *after;
+	unsigned long state = simple_strtoul(buf, &after, 10);
+	size_t count = after - buf;
+
+	if (isspace(*after))
+		count++;
+
+	if (count == size)
+	{
+		ret = count;
+		led_set_offms(led_cdev, state);
+	}
+
+	return ret;
+}
+
 static struct device_attribute led_class_attrs[] = {
 	__ATTR(brightness, 0644, led_brightness_show, led_brightness_store),
 	__ATTR(max_brightness, 0644, led_max_brightness_show,
 			led_max_brightness_store),
+	__ATTR(flashmode, 0644, led_mode_show, led_mode_store),
+	__ATTR(onms, 0644, led_onms_show, led_onms_store),
+	__ATTR(offms, 0644, led_offms_show, led_offms_store),
 #ifdef CONFIG_LEDS_TRIGGERS
 	__ATTR(trigger, 0644, led_trigger_show, led_trigger_store),
 #endif

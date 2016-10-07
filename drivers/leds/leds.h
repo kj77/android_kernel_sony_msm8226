@@ -17,6 +17,30 @@
 #include <linux/rwsem.h>
 #include <linux/leds.h>
 
+static inline void led_set_flashmode(struct led_classdev *led_cdev,
+					enum led_op_mode modevalue)
+{
+	led_cdev->flashmode = modevalue;
+	if (!(led_cdev->flags & LED_SUSPENDED))
+		led_cdev->mode_set(led_cdev, modevalue);
+}
+
+static inline void led_set_onms(struct led_classdev *led_cdev,
+					enum led_op_onms blinkonms)
+{
+	led_cdev->onMS= blinkonms;
+	if (!(led_cdev->flags & LED_SUSPENDED))
+		led_cdev->blinkonms_set(led_cdev, blinkonms);
+}
+
+static inline void led_set_offms(struct led_classdev *led_cdev,
+					enum led_op_onms blinkoffms)
+{
+	led_cdev->offMS= blinkoffms;
+	if (!(led_cdev->flags & LED_SUSPENDED))
+		led_cdev->blinkoffms_set(led_cdev, blinkoffms);
+}
+
 static inline void led_set_brightness(struct led_classdev *led_cdev,
 					enum led_brightness value)
 {
