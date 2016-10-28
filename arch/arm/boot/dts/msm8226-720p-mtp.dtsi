@@ -418,7 +418,7 @@
 			status = "okay";
 			qcom,led_mpp_2 {
 				label = "mpp";
-				linux,name = "rgb_blue";
+				linux,name = "led:rgb_blue";
 				linux,default-trigger = "none";
 				qcom,default-state = "off";
 				qcom,max-current = <40>;
@@ -444,7 +444,7 @@
 			status = "okay";
 			qcom,led_mpp_4 {
 				label = "mpp";
-				linux,name = "rgb_green";
+				linux,name = "led:rgb_green";
 				linux,default-trigger = "none";
 				qcom,default-state = "off";
 				qcom,max-current = <40>;
@@ -470,7 +470,7 @@
 			status = "okay";
 			qcom,led_mpp_6 {
 				label = "mpp";
-				linux,name = "rgb_red";
+				linux,name = "led:rgb_red";
 				linux,default-trigger = "none";
 				qcom,default-state = "off";
 				qcom,max-current = <40>;
