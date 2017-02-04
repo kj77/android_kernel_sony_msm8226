@@ -1064,26 +1064,6 @@ config TOUCHSCREEN_CYPRESS_CYTTSP4_DEVICETREE_SUPPORT
 
           Say Y here to enable device tree support.
 
-config TOUCHSCREEN_CYPRESS_CYTTSP4_DEBUG
-        bool "Enable debug output"
-        depends on TOUCHSCREEN_CYPRESS_CYTTSP4
-        default y
-        help
-          Enable Debug output for Cypress TrueTouch(tm)
-          Standard Product Generation4 drivers set.
-
-          Say Y here to enable debug output.
-
-config TOUCHSCREEN_CYPRESS_CYTTSP4_VDEBUG
-        bool "Enable verbose debug output"
-        depends on TOUCHSCREEN_CYPRESS_CYTTSP4_DEBUG
-        default n
-        help
-          Enable Verbose Debug output for Cypress TrueTouch(tm)
-          Standard Product Generation4 drivers set.
-
-          Say Y here to enable verbose debug output.
-
 config TOUCHSCREEN_CYPRESS_CYTTSP4_I2C
         tristate "Cypress TrueTouch Gen4 I2C"
         depends on TOUCHSCREEN_CYPRESS_CYTTSP4
@@ -1181,16 +1161,5 @@ config TOUCHSCREEN_CYPRESS_CYTTSP4_MANUAL_TTCONFIG_UPGRADE
         help
           Provides a SysFs interface to upgrade TrueTouch
           Configuration with a binary configuration file.
-
-config TOUCHSCREEN_CYPRESS_CYTTSP4_DEBUG_MODULE
-        tristate "Cypress TrueTouch Gen4 MultiTouch Debug Module"
-        depends on TOUCHSCREEN_CYPRESS_CYTTSP4
-        default m
-        help
-          Cypress TrueTouch(tm) Standard Product Generation4
-          Debug module.
-
-          This module adds support for verbose printing touch
-          information.
 
 endif
