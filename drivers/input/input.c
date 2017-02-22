@@ -1816,7 +1816,11 @@ static void input_cleanse_bitmasks(struct input_dev *dev)
  */
 int input_register_device(struct input_dev *dev)
 {
-	static atomic_t input_no = ATOMIC_INIT(0);
+#ifdef CONFIG_MACH_SONY_EAGLE
+    static atomic_t input_no = ATOMIC_INIT(2);
+#else
+    static atomic_t input_no = ATOMIC_INIT(0);
+#endif
 	struct input_handler *handler;
 	const char *path;
 	int error;
@@ -1851,10 +1855,23 @@ int input_register_device(struct input_dev *dev)
 
 	if (!dev->setkeycode)
 		dev->setkeycode = input_default_setkeycode;
-
+#ifdef CONFIG_MACH_SONY_EAGLE
+   /*
+ 	 *add input number by devices name, ALS as input0, PS as input1,
+	 *default from input2.
+   */
+	if (sysfs_streq(dev->name, "lightsensor-level")) {
+		dev_set_name(&dev->dev, "input0");
+	} else if (sysfs_streq(dev->name, "proximity")) {
+		dev_set_name(&dev->dev, "input1");
+	} else {
+		dev_set_name(&dev->dev, "input%ld",
+			(unsigned long) atomic_inc_return(&input_no) - 1);
+	}
+#else
 	dev_set_name(&dev->dev, "input%ld",
 		     (unsigned long) atomic_inc_return(&input_no) - 1);
-
+#endif
 	error = device_add(&dev->dev);
 	if (error)
 		return error;
