@@ -84,3 +84,17 @@ obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_DSX_RMI4_DEV)	+= synaptics_rmi_dev.o
 obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_DSX_FW_UPDATE) 	+= synaptics_fw_update.o
 obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI4)		+= synaptics_i2c_rmi4.o
 obj-$(CONFIG_TOUCHSCREEN_GT9XX)		+= gt9xx/
+obj-$(CONFIG_CYPRESS_CYTTSP4_BUS)		+= cyttsp4_bus.o
+obj-$(CONFIG_TOUCHSCREEN_CYPRESS_CYTTSP4)	+= cyttsp4_core.o
+ifdef CONFIG_TOUCHSCREEN_CYPRESS_CYTTSP4
+obj-y += cyttsp4_platform.o
+endif
+obj-$(CONFIG_TOUCHSCREEN_CYPRESS_CYTTSP4_I2C)	+= cyttsp4_i2c.o
+obj-$(CONFIG_TOUCHSCREEN_CYPRESS_CYTTSP4_MT_B)  += cyttsp4_mt_b.o
+cyttsp4_mt_b-y := cyttsp4_mtb.o cyttsp4_mt_common.o
+# obj-$(CONFIG_TOUCHSCREEN_CYPRESS_CYTTSP4_BUTTON)	+= cyttsp4_btn.o
+# obj-$(CONFIG_TOUCHSCREEN_CYPRESS_CYTTSP4_PROXIMITY)	+= cyttsp4_proximity.o
+obj-$(CONFIG_TOUCHSCREEN_CYPRESS_CYTTSP4_DEVICE_ACCESS)	+= cyttsp4_device_access.o
+obj-$(CONFIG_TOUCHSCREEN_CYPRESS_CYTTSP4_TEST_DEVICE_ACCESS_API)	+= cyttsp4_test_device_access_api.o
+obj-$(CONFIG_TOUCHSCREEN_CYPRESS_CYTTSP4_LOADER)	+= cyttsp4_loader.o
+obj-$(CONFIG_TOUCHSCREEN_CYPRESS_CYTTSP4_DEVICETREE_SUPPORT)	+= cyttsp4_devtree.o
