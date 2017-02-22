@@ -3056,6 +3056,11 @@ config KRAIT_REGULATOR
 	 this option to support such configurations.
 endif
 
+config CCI_HARDWARE_ID
+	bool "CCI Hardware ID Module"
+	depends on MSM_SMD
+	default n
+
 config KERNEL_TEXT_MPU_PROT
         bool "Enable xpu protection of kernel r/o sections"
         help
