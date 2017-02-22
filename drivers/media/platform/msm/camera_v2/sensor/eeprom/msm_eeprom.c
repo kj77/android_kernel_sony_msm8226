@@ -350,6 +350,9 @@ static int read_eeprom_memory(struct msm_eeprom_ctrl_t *e_ctrl,
 				return rc;
 			}
 		}
+#ifdef CONFIG_MACH_SONY_EAGLE
+		e_ctrl->i2c_client.cci_client->sid++;
+#endif
 	}
 	return rc;
 }

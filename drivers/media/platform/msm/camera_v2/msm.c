@@ -670,6 +670,9 @@ int msm_post_event(struct v4l2_event *event, int timeout)
 	struct msm_command *cmd;
 	int session_id, stream_id;
 	unsigned long flags = 0;
+#if defined(CONFIG_MACH_SONY_EAGLE)
+	uint16_t retry_count = 0;
+#endif
 
 	session_id = event_data->session_id;
 	stream_id = event_data->stream_id;
@@ -717,8 +720,27 @@ int msm_post_event(struct v4l2_event *event, int timeout)
 	}
 
 	/* should wait on session based condition */
+#if defined(CONFIG_MACH_SONY_EAGLE)
+	retry_count = 500;
+	do {
+		rc = wait_for_completion_timeout(&cmd_ack->wait_complete,
+			msecs_to_jiffies(timeout));
+		retry_count--;
+		if (rc != -ERESTARTSYS)
+			break;
+		pr_debug("%s: wait_event interrupted by signal, count = %d",
+				__func__, retry_count);
+		msleep(20);
+	} while (retry_count > 0);
+
+	if (rc == -ERESTARTSYS) {
+		pr_err("%s: rc = %d\n", __func__, rc);
+		rc = -EINVAL;
+	}
+#else
 	rc = wait_for_completion_timeout(&cmd_ack->wait_complete,
 			msecs_to_jiffies(timeout));
+#endif
 
 	if (list_empty_careful(&cmd_ack->command_q.list)) {
 		if (!rc) {
