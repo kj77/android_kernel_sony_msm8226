@@ -716,7 +716,14 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 	 * data lanes for LP11 init
 	 */
 	if (mipi->lp11_init)
+#ifdef CONFIG_MACH_SONY_EAGLE
+   {
+        pr_info("lp11_delay");
 		mdss_dsi_panel_reset(pdata, 1);
+    }
+#else
+		mdss_dsi_panel_reset(pdata, 1);
+#endif
 
 	if (mipi->init_delay)
 		usleep(mipi->init_delay);
@@ -1122,9 +1129,52 @@ static struct device_node *mdss_dsi_pref_prim_panel(
  *
  * returns pointer to panel node on success, NULL on error.
  */
+
+#ifdef CONFIG_MACH_SONY_EAGLE
+#define LCD_ID_GPIO 23
+int g_mdss_dsi_lcd_id = 0;
+#endif
+
 static struct device_node *mdss_dsi_find_panel_of_node(
 		struct platform_device *pdev, char *panel_cfg)
 {
+
+#ifdef CONFIG_MACH_SONY_EAGLE
+  struct device_node *dsi_pan_node = NULL;
+  int status,rc;
+  rc = gpio_request(LCD_ID_GPIO, "disp_lcd_id");
+
+  rc = gpio_tlmm_config(GPIO_CFG(
+		  LCD_ID_GPIO,
+		  0,
+		  GPIO_CFG_INPUT,
+		  GPIO_CFG_NO_PULL,//GPIO_CFG_PULL_UP,///*GPIO_CFG_PULL_DOWN,*/
+		  GPIO_CFG_2MA),
+		  GPIO_CFG_ENABLE);
+
+  status = gpio_get_value(LCD_ID_GPIO);
+  g_mdss_dsi_lcd_id = status;
+  pr_info("%s: LCD_ID = %d\n", __func__, status);
+
+  if(g_mdss_dsi_lcd_id == 0)
+  {
+	  dsi_pan_node = of_parse_phandle(
+		  pdev->dev.of_node,
+		  "qcom,dsi-pref-prim-pan1", 0);
+  }
+  else
+  {
+	  dsi_pan_node = of_parse_phandle(
+		  pdev->dev.of_node,
+		  "qcom,dsi-pref-prim-pan2", 0);
+  }
+
+	if (!dsi_pan_node) {
+		pr_err("%s:can't find panel phandle\n",
+		       __func__);
+		return NULL;
+  }
+#else
 	int len, i;
 	int ctrl_id = pdev->id - 1;
 	char panel_name[MDSS_MAX_PANEL_LEN];
@@ -1180,6 +1230,8 @@ static struct device_node *mdss_dsi_find_panel_of_node(
 	}
 end:
 	dsi_pan_node = mdss_dsi_pref_prim_panel(pdev);
+#endif
+
 
 	return dsi_pan_node;
 }

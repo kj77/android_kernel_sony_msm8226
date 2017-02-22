@@ -816,6 +816,11 @@ int mdss_mdp_pipe_destroy(struct mdss_mdp_pipe *pipe)
 	return 0;
 }
 
+#ifdef CONFIG_MACH_SONY_EAGLE
+extern int check_mdss_mdp_mfd_index(struct msm_fb_data_type *mfd);
+extern int g_mdss_dsi_lcd_id;
+#endif
+
 /**
  * mdss_mdp_pipe_handoff() - Handoff staged pipes during bootup
  * @pipe: pointer to the pipe to be handed-off
@@ -946,6 +951,18 @@ static int mdss_mdp_image_setup(struct mdss_mdp_pipe *pipe,
 	dst_size = (dst.h << 16) | dst.w;
 	dst_xy = (dst.y << 16) | dst.x;
 
+#ifdef CONFIG_MACH_SONY_EAGLE
+ if(pipe->mfd && check_mdss_mdp_mfd_index(pipe->mfd) == 0 && g_mdss_dsi_lcd_id == 0)
+  {
+    dst_xy = (((960- dst.y - dst.h) << 16) |
+    (540- dst.x - dst.w));
+  }
+  else
+  {
+    dst_xy = (dst.y << 16) | dst.x;
+  }
+#endif
+
 	ystride0 =  (pipe->src_planes.ystride[0]) |
 			(pipe->src_planes.ystride[1] << 16);
 	ystride1 =  (pipe->src_planes.ystride[2]) |
@@ -1007,6 +1024,21 @@ static int mdss_mdp_format_setup(struct mdss_mdp_pipe *pipe)
 		opmode |= MDSS_MDP_OP_FLIP_LR;
 	if (pipe->flags & MDP_FLIP_UD)
 		opmode |= MDSS_MDP_OP_FLIP_UD;
+
+#ifdef CONFIG_MACH_SONY_EAGLE
+  if(pipe->mfd && check_mdss_mdp_mfd_index(pipe->mfd) == 0 && g_mdss_dsi_lcd_id == 0)
+  {
+    if(opmode & MDSS_MDP_OP_FLIP_LR)
+      opmode &= ~MDSS_MDP_OP_FLIP_LR; 
+    else
+      opmode |= MDSS_MDP_OP_FLIP_LR; 
+
+    if(opmode & MDSS_MDP_OP_FLIP_UD)
+      opmode &= ~MDSS_MDP_OP_FLIP_UD; 
+    else
+      opmode |= MDSS_MDP_OP_FLIP_UD; 
+  }
+#endif
 
 	pr_debug("pnum=%d format=%d opmode=%x\n", pipe->num, fmt->format,
 			opmode);
