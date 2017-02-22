@@ -30,11 +30,18 @@
 #include <linux/of_gpio.h>
 #include <linux/spinlock.h>
 
+#ifdef CONFIG_MACH_SONY_EAGLE
+#include <linux/wakelock.h>
+#endif
+
 struct gpio_button_data {
 	const struct gpio_keys_button *button;
 	struct input_dev *input;
 	struct timer_list timer;
 	struct work_struct work;
+#ifdef CONFIG_MACH_SONY_EAGLE
+    struct wake_lock gpio_keys_wake_lock;
+#endif
 	unsigned int timer_debounce;	/* in msecs */
 	unsigned int irq;
 	spinlock_t lock;
@@ -335,7 +342,14 @@ static void gpio_keys_gpio_report_event(struct gpio_button_data *bdata)
 		if (state)
 			input_event(input, type, button->code, button->value);
 	} else {
+#ifdef CONFIG_MACH_SONY_EAGLE
+		if (bdata->button->gpio==106 || bdata->button->gpio==107|| bdata->button->gpio==108) {
+			wake_lock_timeout(&bdata->gpio_keys_wake_lock, HZ*3);
+			input_event(input, type, button->code, !!state);
+		}
+#else
 		input_event(input, type, button->code, !!state);
+#endif
 	}
 	input_sync(input);
 }
@@ -473,6 +487,9 @@ static int __devinit gpio_keys_setup_key(struct platform_device *pdev,
 			    gpio_keys_gpio_timer, (unsigned long)bdata);
 
 		isr = gpio_keys_gpio_isr;
+#ifdef CONFIG_MACH_SONY_EAGLE
+		wake_lock_init(&bdata->gpio_keys_wake_lock, WAKE_LOCK_SUSPEND, "gpio_keys_wake_lock"); 
+#endif
 		irqflags = IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING;
 
 	} else {
@@ -655,6 +672,28 @@ static int __devinit gpio_keys_probe(struct platform_device *pdev)
 	int i, error;
 	int wakeup = 0;
 
+#ifdef CONFIG_MACH_SONY_EAGLE
+	struct device_node *node; 
+	int cci_hwid, dt_hwid, rc; 
+	
+	node = dev->of_node;
+	rc = of_property_read_u32(node, "hwid-type", &dt_hwid);
+	
+	if(rc) {
+		pr_info("hwid-type not specified\n");
+		return rc;
+	}	
+	
+		cci_hwid = 1;
+
+	if (cci_hwid != dt_hwid) {
+		pr_info("%s(): cci_hwid=%d doesn't match dt_hwid=%d\n", __func__, cci_hwid, dt_hwid);
+		return -ENODEV;
+	} else {
+		pr_info("%s(): cci_hwid=%d  match dt_hwid=%d\n", __func__, cci_hwid, dt_hwid);
+	}
+#endif
+
 	if (!pdata) {
 		error = gpio_keys_get_devtree_pdata(dev, &alt_pdata);
 		if (error)
@@ -805,9 +844,14 @@ static int gpio_keys_resume(struct device *dev)
 		struct gpio_button_data *bdata = &ddata->data[i];
 		if (bdata->button->wakeup && device_may_wakeup(dev))
 			disable_irq_wake(bdata->irq);
-
+#ifdef CONFIG_MACH_SONY_EAGLE
+		 /*Bypass camera snapshot and focus key*/
+		if (gpio_is_valid(bdata->button->gpio) && (bdata->button->gpio!=107 && bdata->button->gpio!=108))
+			gpio_keys_gpio_report_event(bdata);
+#else
 		if (gpio_is_valid(bdata->button->gpio))
 			gpio_keys_gpio_report_event(bdata);
+#endif
 	}
 	input_sync(ddata->input);
 
