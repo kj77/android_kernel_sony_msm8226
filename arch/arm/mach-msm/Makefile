@@ -263,7 +263,7 @@ obj-$(CONFIG_MACH_MSM8930_MTP) += board-8930-all.o board-8930-regulator-pm8038.o
 obj-$(CONFIG_MACH_MSM8930_FLUID) += board-8930-all.o board-8930-regulator-pm8038.o board-8930-regulator-pm8917.o
 obj-$(CONFIG_PM8921_BMS) += bms-batterydata.o bms-batterydata-desay.o batterydata-lib.o
 obj-$(CONFIG_QPNP_BMS) += bms-batterydata.o bms-batterydata-desay.o batterydata-lib.o
-obj-$(CONFIG_QPNP_BMS) += bms-batterydata-oem.o bms-batterydata-qrd-4v35-2000mah.o bms-batterydata-qrd-4v2-1300mah.o
+obj-$(CONFIG_QPNP_BMS) += bms-batterydata-qrd-4v35-2000mah.o bms-batterydata-qrd-4v2-1300mah.o
 obj-$(CONFIG_MACH_APQ8064_CDP) += board-8064-all.o board-8064-regulator.o
 obj-$(CONFIG_MACH_APQ8064_MTP) += board-8064-all.o board-8064-regulator.o
 obj-$(CONFIG_MACH_APQ8064_LIQUID) += board-8064-all.o board-8064-regulator.o
@@ -278,7 +278,6 @@ obj-$(CONFIG_ARCH_MSM8974) += clock-krait-8974.o
 obj-$(CONFIG_ARCH_MSM8974) += clock-local2.o clock-pll.o clock-8974.o clock-rpm.o clock-voter.o clock-mdss-8974.o
 obj-$(CONFIG_ARCH_MSM8974) += gdsc.o
 obj-$(CONFIG_ARCH_MSM9625) += gdsc.o
-obj-$(CONFIG_ARCH_MSM8226) += gdsc.o
 obj-$(CONFIG_ARCH_MSM8610) += gdsc.o
 obj-$(CONFIG_ARCH_MPQ8092) += gdsc.o
 obj-$(CONFIG_ARCH_APQ8084) += gdsc.o
@@ -289,9 +288,33 @@ obj-$(CONFIG_ARCH_MSM9625) += board-9625.o board-9625-gpiomux.o
 obj-$(CONFIG_ARCH_MSM9625) += clock-local2.o clock-pll.o clock-9625.o clock-rpm.o clock-voter.o acpuclock-9625.o acpuclock-cortex.o
 obj-$(CONFIG_ARCH_MPQ8092) += board-8092.o board-8092-gpiomux.o
 obj-$(CONFIG_ARCH_MPQ8092) += clock-8092.o
-obj-$(CONFIG_ARCH_MSM8226) += board-8226.o board-8226-gpiomux.o
-obj-$(CONFIG_ARCH_MSM8226) += clock-local2.o clock-pll.o clock-8226.o clock-rpm.o clock-voter.o clock-mdss-8974.o
-obj-$(CONFIG_ARCH_MSM8226) += acpuclock-8226.o acpuclock-cortex.o
+
+obj-$(CONFIG_MACH_SONY_EAGLE) += board-eagle.o
+obj-$(CONFIG_MACH_SONY_EAGLE) += board-eagle-gpiomux.o
+obj-$(CONFIG_MACH_SONY_EAGLE) += clock-eagle.o
+obj-$(CONFIG_MACH_SONY_EAGLE) += board-eagle-console.o
+obj-$(CONFIG_MACH_SONY_EAGLE) += bms-batterydata-eagle.o
+
+#Disabled CAF batterydata,Use device specific.
+#obj-$(CONFIG_QPNP_BMS) += bms-batterydata-oem.o
+
+# Enable Them by using your device flag,easier to introduce changes
+#obj-$(CONFIG_ARCH_MSM8226) += board-8226.o
+#obj-$(CONFIG_ARCH_MSM8226) += board-8226-gpiomux.o
+#obj-$(CONFIG_ARCH_MSM8226) += clock-8226.o
+
+obj-$(CONFIG_ARCH_MSM8226) += clock-local2.o  
+obj-$(CONFIG_ARCH_MSM8226) += clock-pll.o 
+obj-$(CONFIG_ARCH_MSM8226) += clock-rpm.o
+obj-$(CONFIG_ARCH_MSM8226) += clock-voter.o
+obj-$(CONFIG_ARCH_MSM8226) += clock-mdss-8974.o
+obj-$(CONFIG_ARCH_MSM8226) += acpuclock-cortex.o
+obj-$(CONFIG_ARCH_MSM8226) += acpuclock-8226.o
+obj-$(CONFIG_ARCH_MSM8226) += gpiomux-v2.o gpiomux.o
+obj-$(CONFIG_ARCH_MSM8226) += gdsc.o
+obj-$(CONFIG_ARCH_MSM8226) += board-sony_yukon-nfc.o
+
+
 obj-$(CONFIG_ARCH_MSM8610) += board-8610.o board-8610-gpiomux.o
 obj-$(CONFIG_ARCH_MSM8610) += clock-local2.o clock-pll.o clock-8610.o clock-rpm.o clock-voter.o
 obj-$(CONFIG_ARCH_MSM8610) += acpuclock-8226.o acpuclock-cortex.o
@@ -356,7 +379,6 @@ obj-$(CONFIG_ARCH_MSM9625) += gpiomux-v2.o gpiomux.o
 obj-$(CONFIG_ARCH_MSMKRYPTON) += gpiomux-v2.o gpiomux.o
 obj-$(CONFIG_ARCH_MSMSAMARIUM) += gpiomux-v2.o gpiomux.o
 obj-$(CONFIG_ARCH_MPQ8092) += gpiomux-v2.o gpiomux.o
-obj-$(CONFIG_ARCH_MSM8226) += gpiomux-v2.o gpiomux.o
 obj-$(CONFIG_ARCH_MSM8610) += gpiomux-v2.o gpiomux.o
 obj-$(CONFIG_ARCH_APQ8084) += gpiomux-v2.o gpiomux.o
 obj-$(CONFIG_ARCH_FSM9900) += gpiomux-v2.o gpiomux.o
