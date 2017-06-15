@@ -2,6 +2,7 @@
  *  linux/drivers/mmc/host/sdhci.c - Secure Digital Host Controller Interface driver
  *
  *  Copyright (C) 2005-2008 Pierre Ossman, All Rights Reserved.
+ *  Copyright (C) 2013 Sony Mobile Communications Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -11,6 +12,9 @@
  * Thanks to the following companies for their support:
  *
  *     - JMicron (hardware and technical support)
+ *
+ * NOTE: This file has been modified by Sony Mobile Communications Inc.
+ * Modifications are licensed under the License.
  */
 
 #include <linux/delay.h>
@@ -28,6 +32,10 @@
 #include <linux/mmc/mmc.h>
 #include <linux/mmc/host.h>
 #include <linux/mmc/card.h>
+
+#ifdef CONFIG_MACH_SONY_EAGLE
+#include <linux/mmc/cd-gpio.h>
+#endif
 
 #include "sdhci.h"
 
@@ -516,6 +524,12 @@ static int sdhci_pre_dma_transfer(struct sdhci_host *host,
 {
 	int sg_count;
 
+#ifdef CONFIG_MACH_SONY_EAGLE
+	unsigned long flags;
+
+	spin_lock_irqsave(&host->next_lock, flags);
+#endif
+
 	if (!next && data->host_cookie &&
 	    data->host_cookie != host->next_data.cookie) {
 		printk(KERN_WARNING "[%s] invalid cookie: data->host_cookie %d"
@@ -535,15 +549,24 @@ static int sdhci_pre_dma_transfer(struct sdhci_host *host,
 		sg_count = host->next_data.sg_count;
 		host->next_data.sg_count = 0;
 	}
-
+#ifdef CONFIG_MACH_SONY_EAGLE
+	if (sg_count == 0) {
+		spin_unlock_irqrestore(&host->next_lock, flags);
+  		return -EINVAL;
+	}
+#else
 	if (sg_count == 0)
 		return -EINVAL;
-
+#endif
 	if (next) {
 		next->sg_count = sg_count;
 		data->host_cookie = ++next->cookie < 0 ? 1 : next->cookie;
 	} else
 		host->sg_count = sg_count;
+
+#ifdef CONFIG_MACH_SONY_EAGLE
+	spin_unlock_irqrestore(&host->next_lock, flags);
+#endif
 
 	return sg_count;
 }
@@ -1453,6 +1476,7 @@ static int sdhci_notify_load(struct mmc_host *mmc, enum mmc_load state)
 	return err;
 }
 
+#ifndef CONFIG_MACH_SONY_EAGLE
 static void sdhci_pre_req(struct mmc_host *mmc, struct mmc_request *mrq,
 			  bool is_first_req)
 {
@@ -1481,6 +1505,7 @@ static void sdhci_post_req(struct mmc_host *mmc, struct mmc_request *mrq,
 		data->host_cookie = 0;
 	}
 }
+#endif
 
 static bool sdhci_check_state(struct sdhci_host *host)
 {
@@ -1908,6 +1933,19 @@ static void sdhci_hw_reset(struct mmc_host *mmc)
 	if (host->ops && host->ops->hw_reset)
 		host->ops->hw_reset(host);
 }
+
+#ifdef CONFIG_MACH_SONY_EAGLE
+static int sdhci_get_cd(struct mmc_host *mmc)
+{
+	struct sdhci_host *host = mmc_priv(mmc);
+	int ret;
+
+	sdhci_runtime_pm_get(host);
+	ret = mmc_cd_get_status(mmc);
+	sdhci_runtime_pm_put(host);
+	return ret;
+}
+#endif
 
 static int sdhci_get_ro(struct mmc_host *mmc)
 {
@@ -2379,11 +2417,16 @@ static unsigned int sdhci_get_xfer_remain(struct mmc_host *mmc)
 }
 
 static const struct mmc_host_ops sdhci_ops = {
+#ifndef CONFIG_MACH_SONY_EAGLE
 	.pre_req	= sdhci_pre_req,
 	.post_req	= sdhci_post_req,
+#endif
 	.request	= sdhci_request,
 	.set_ios	= sdhci_set_ios,
 	.get_ro		= sdhci_get_ro,
+#ifdef CONFIG_MACH_SONY_EAGLE
+	.get_cd		= sdhci_get_cd,
+#endif
 	.hw_reset	= sdhci_hw_reset,
 	.enable_sdio_irq = sdhci_enable_sdio_irq,
 	.start_signal_voltage_switch	= sdhci_start_signal_voltage_switch,
@@ -3130,6 +3173,9 @@ struct sdhci_host *sdhci_alloc_host(struct device *dev,
 	host->mmc = mmc;
 
 	spin_lock_init(&host->lock);
+#ifdef CONIFG_MACH_SONY_EAGLE
+	spin_lock_init(&host->next_lock);
+#endif
 	mutex_init(&host->ios_mutex);
 
 	return host;
@@ -3331,7 +3377,16 @@ int sdhci_add_host(struct sdhci_host *host)
 	    ((host->flags & SDHCI_USE_ADMA) ||
 	     !(host->flags & SDHCI_USE_SDMA))) {
 		host->flags |= SDHCI_AUTO_CMD23;
+#ifdef CONFIG_MACH_SONY_EAGLE
+		if (mmc->caps & MMC_CAP_NONREMOVABLE) {
+			host->flags |= SDHCI_AUTO_CMD23;
+			DBG("%s: Auto-CMD23 available\n", mmc_hostname(mmc));
+		} else {
+			DBG("%s: Auto-CMD23 unavailable\n", mmc_hostname(mmc));
+		}
+#else
 		DBG("%s: Auto-CMD23 available\n", mmc_hostname(mmc));
+#endif
 	} else {
 		DBG("%s: Auto-CMD23 unavailable\n", mmc_hostname(mmc));
 	}

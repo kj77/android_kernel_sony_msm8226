@@ -251,6 +251,9 @@ struct sdhci_host {
 	struct device_attribute pm_qos_tout;
 
 	struct sdhci_next next_data;
+    #ifdef CONFIG_MACH_SONY_EAGLE
+	spinlock_t next_lock;	/* Mutex for next_data */
+    #endif
 	ktime_t data_start_time;
 	struct mutex ios_mutex;
 	enum sdhci_power_policy power_policy;

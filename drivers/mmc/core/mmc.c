@@ -597,6 +597,16 @@ static int mmc_read_ext_csd(struct mmc_card *card, u8 *ext_csd)
 			ext_csd[EXT_CSD_MAX_PACKED_WRITES];
 		card->ext_csd.max_packed_reads =
 			ext_csd[EXT_CSD_MAX_PACKED_READS];
+
+#ifdef CONFIG_MACH_SONY_EAGLE
+ 		/*
+		 * Toshiba eMMC has problem on write packed command
+		 * and limit the number of max write packed command
+		 * to 2 recommended by Toshiba.
+		 */
+		if (card->cid.manfid == 0x11)
+			card->ext_csd.max_packed_writes = 2;
+#endif
 	}
 
 out:
@@ -689,6 +699,9 @@ MMC_DEV_ATTR(enhanced_area_offset, "%llu\n",
 MMC_DEV_ATTR(enhanced_area_size, "%u\n", card->ext_csd.enhanced_area_size);
 MMC_DEV_ATTR(raw_rpmb_size_mult, "%#x\n", card->ext_csd.raw_rpmb_size_mult);
 MMC_DEV_ATTR(rel_sectors, "%#x\n", card->ext_csd.rel_sectors);
+#ifdef CONFIG_MACH_SONY_EAGLE
+MMC_DEV_ATTR(ext_csd_rev, "%d\n", card->ext_csd.rev);
+#endif
 
 static struct attribute *mmc_std_attrs[] = {
 	&dev_attr_cid.attr,
@@ -706,6 +719,9 @@ static struct attribute *mmc_std_attrs[] = {
 	&dev_attr_enhanced_area_size.attr,
 	&dev_attr_raw_rpmb_size_mult.attr,
 	&dev_attr_rel_sectors.attr,
+#ifdef CONFIG_MACH_SONY_EAGLE
+	&dev_attr_ext_csd_rev.attr,
+#endif
 	NULL,
 };
 
