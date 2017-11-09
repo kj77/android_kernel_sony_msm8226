@@ -2958,8 +2958,6 @@ static void put_event(struct perf_event *event)
 {
 	struct task_struct *owner;
 
-	file->private_data = NULL;
-
 	if (!atomic_long_dec_and_test(&event->refcount))
 		return;
 
