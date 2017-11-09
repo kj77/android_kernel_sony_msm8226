@@ -100,11 +100,13 @@ endif
 
 # MSM8226
    zreladdr-$(CONFIG_ARCH_MSM8226)	:= 0x00008000
-	dtb-$(CONFIG_MACH_SONY_EAGLE)   += msm8226-v1-yukon_eagle-mtp.dtb
-	dtb-$(CONFIG_MACH_SONY_EAGLE)	+= msm8226-v2-yukon_eagle-720p-mtp.dtb
-	dtb-$(CONFIG_MACH_SONY_EAGLE)	+= msm8926-v1-yukon_eagle-720p-mtp.dtb
-	dtb-$(CONFIG_MACH_SONY_EAGLE)	+= msm8926-v2-yukon_eagle-720p-mtp.dtb
-	dtb-$(CONFIG_MACH_SONY_FLAMINGO)+= msm8926-yukon_flamingo-8926ss_ap.dtb
+	dtb-$(CONFIG_MACH_SONY_EAGLE)   += msm8226-v1-mtp.dtb
+	dtb-$(CONFIG_MACH_SONY_EAGLE)	+= msm8226-v2-720p-mtp.dtb
+	dtb-$(CONFIG_MACH_SONY_EAGLE)	+= msm8226-v2-1080p-mtp.dtb
+	dtb-$(CONFIG_MACH_SONY_EAGLE)	+= msm8926-v1-720p-mtp.dtb
+	dtb-$(CONFIG_MACH_SONY_EAGLE)	+= msm8926-v1-1080p-mtp.dtb
+	dtb-$(CONFIG_MACH_SONY_EAGLE)	+= msm8926-v2-720p-mtp.dtb
+	dtb-$(CONFIG_MACH_SONY_EAGLE)	+= msm8926-v2-1080p-mtp.dtb
 
 # FSM9XXX
    zreladdr-$(CONFIG_ARCH_FSM9XXX)	:= 0x10008000

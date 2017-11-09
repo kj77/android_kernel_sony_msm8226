@@ -22,7 +22,7 @@
 		qcom,mdss-dsi-panel-type = "dsi_video_mode";
 		qcom,mdss-dsi-panel-destination = "display_1";
 		//qcom,mdss-dsi-panel-framerate = <30>;
-        qcom,mdss-dsi-panel-frame-rate = <60>;
+    qcom,mdss-dsi-panel-frame-rate = <60>;
 		qcom,mdss-dsi-virtual-channel-id = <0>;
 		qcom,mdss-dsi-stream = <0>;
 		qcom,mdss-dsi-panel-width = <540>;
@@ -218,8 +218,8 @@
 		qcom,mdss-pan-physical-width-dimension = <59>;
 		qcom,mdss-pan-physical-height-dimension = <104>;
 	};
-	
-    dsi_truly_qhd_vid: qcom,mdss_dsi_truly_qhd_video {
+
+	dsi_truly_qhd_vid: qcom,mdss_dsi_truly_qhd_video {
 		qcom,mdss-dsi-panel-name = "truly QHD video mode dsi panel,speed up, 0423-V2-Gamma ,0318 power saving";
 		qcom,mdss-dsi-panel-controller = <&mdss_dsi0>;
 		qcom,mdss-dsi-panel-type = "dsi_video_mode";
@@ -553,7 +553,7 @@
 		qcom,mdss-dsi-h-sync-pulse = <1>;
 		qcom,mdss-dsi-traffic-mode = "burst_mode";
 		qcom,mdss-dsi-lane-map = <0>;
-        qcom,mdss-dsi-hfp-power-mode;
+    qcom,mdss-dsi-hfp-power-mode;
 		qcom,mdss-dsi-bllp-eof-power-mode;
 		qcom,mdss-dsi-bllp-power-mode;
 		qcom,mdss-dsi-lane-0-state;
@@ -573,3 +573,4 @@
     qcom,mdss-dsi-init-delay-us = <1>;
 	};
 };
+
