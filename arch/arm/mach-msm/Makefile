@@ -295,6 +295,7 @@ obj-$(CONFIG_MACH_SONY_EAGLE) += board-eagle-gpiomux.o
 obj-$(CONFIG_MACH_SONY_EAGLE) += clock-eagle.o
 obj-$(CONFIG_MACH_SONY_EAGLE) += board-eagle-console.o
 obj-$(CONFIG_MACH_SONY_EAGLE) += bms-batterydata-eagle.o
+obj-$(CONFIG_MACH_SONY_EAGLE) += msm_mpmctr.o
 
 #Disabled CAF batterydata,Use device specific.
 #obj-$(CONFIG_QPNP_BMS) += bms-batterydata-oem.o
@@ -313,8 +314,6 @@ obj-$(CONFIG_ARCH_MSM8226) += acpuclock-cortex.o
 obj-$(CONFIG_ARCH_MSM8226) += acpuclock-8226.o
 obj-$(CONFIG_ARCH_MSM8226) += gpiomux-v2.o gpiomux.o
 obj-$(CONFIG_ARCH_MSM8226) += gdsc.o
-obj-$(CONFIG_ARCH_MSM8226) += board-sony_yukon-nfc.o
-
 
 obj-$(CONFIG_ARCH_MSM8610) += board-8610.o board-8610-gpiomux.o
 obj-$(CONFIG_ARCH_MSM8610) += clock-local2.o clock-pll.o clock-8610.o clock-rpm.o clock-voter.o

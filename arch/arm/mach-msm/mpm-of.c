@@ -300,6 +300,14 @@ static void msm_mpm_set_edge_ctl(int pin, unsigned int flow_type)
 	else
 		msm_mpm_rising_edge[index] &= ~mask;
 
+#ifdef CONFIG_MACH_SONY_EAGLE
+	/*KevinA_Lin, 20150408 Implement side-key function S*/
+	if(pin==38 || pin==37) {
+		msm_mpm_falling_edge[index] |= (1<<6);
+		msm_mpm_rising_edge[index] |= (1<<6);
+	}
+	/*KevinA_Lin, 20150408 Implement side-key function */
+#endif
 }
 
 static int msm_mpm_set_irq_type_exclusive(

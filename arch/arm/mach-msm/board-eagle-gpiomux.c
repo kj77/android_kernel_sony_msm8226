@@ -82,6 +82,7 @@ static struct msm_gpiomux_config msm8226_led_det_configs[] __initdata = {
 		},
 	},
 };
+//E:EllenLu 20130709 ,[LED]add for SOMC Illumination
 
 #define KS8851_IRQ_GPIO 115
 
@@ -102,7 +103,6 @@ static struct msm_gpiomux_config msm_eth_configs[] = {
 };
 #endif
 
-//S:LO//hh
 static struct gpiomux_setting uim1_det_actv_cfg = {
 	.func = GPIOMUX_FUNC_1,
 	.drv = GPIOMUX_DRV_2MA,
@@ -137,7 +137,6 @@ static struct msm_gpiomux_config msm8226_uim_det_configs[] __initdata = {
 			[GPIOMUX_SUSPENDED] = &uim1_det_susp_cfg,
 		},
 	},
-
 	{
 		.gpio      = 56,
 		.settings = {
@@ -268,7 +267,7 @@ static struct gpiomux_setting synaptics_reset_sus_cfg = {
 	.drv = GPIOMUX_DRV_2MA,
 	.pull = GPIOMUX_PULL_DOWN,
 };
-
+/*KevinA_Lin, 20150408 Implement side-key function S*/
 static struct gpiomux_setting gpio_volume_keys_active = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_2MA,
@@ -279,7 +278,7 @@ static struct gpiomux_setting gpio_volume_keys_suspend = {
 	.drv = GPIOMUX_DRV_2MA,
 	.pull = GPIOMUX_PULL_UP,
 };
-
+/*KevinA_Lin, 20150408 Implement side-key function E*/
 static struct gpiomux_setting gpio_keys_active = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_2MA,
@@ -323,7 +322,7 @@ static struct gpiomux_setting gpio_i2c_config = {
 };
 
 static struct msm_gpiomux_config msm_keypad_configs[] __initdata = {
-
+/*KevinA_Lin, 20150408 Implement side-key function S*/
 	{
 		.gpio = 106,
 		.settings = {
@@ -338,7 +337,7 @@ static struct msm_gpiomux_config msm_keypad_configs[] __initdata = {
 			[GPIOMUX_SUSPENDED] = &gpio_volume_keys_suspend,
 		},
 	},
-
+/*KevinA_Lin, 20150408 Implement side-key function E*/
 	{
 		.gpio = 107,
 		.settings = {
@@ -386,7 +385,6 @@ static struct msm_gpiomux_config msm_lcd_configs[] __initdata = {
 };
 
 static struct msm_gpiomux_config msm_blsp_configs[] __initdata = {
-
 	{
 		.gpio      = 14,	/* BLSP1 QUP4 I2C_SDA */
 		.settings = {
@@ -415,7 +413,6 @@ static struct msm_gpiomux_config msm_blsp_configs[] __initdata = {
 			[GPIOMUX_SUSPENDED] = &gpio_i2c_config,
 		},
 	},
-
 	/*CCI, IO Sensor - Add sensor I2C bus BLSP2 S*/
 	{
 		.gpio      = 6,		/* BLSP1 QUP2 I2C_SDA */

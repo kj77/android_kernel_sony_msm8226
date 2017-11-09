@@ -63,8 +63,9 @@
 #include "modem_notifier.h"
 #include "spm-regulator.h"
 
-
+//S:LO
 #include <linux/gpio_event.h>
+//E:LO
 
 #define GPIO_SW_UIM1_DET    60
 #define GPIO_SW_UIM2_DET    56
@@ -106,7 +107,6 @@ struct platform_device gpio_key_device = {
 static struct platform_device *common_devices[] = {
 	&gpio_key_device,
 };
-//E:LO
 
 static struct memtype_reserve msm8226_reserve_table[] __initdata = {
 	[MEMTYPE_SMI] = {
@@ -128,11 +128,6 @@ static struct of_dev_auxdata msm_hsic_host_adata[] = {
 	OF_DEV_AUXDATA("qcom,hsic-host", 0xF9A00000, "msm_hsic_host", NULL),
 	{}
 };
-
-
-#define RDTAGS_MEM_SIZE (256 * SZ_1K)
-#define RDTAGS_MEM_DESC_SIZE (256 * SZ_1K)
-#define LAST_LOGS_OFFSET (RDTAGS_MEM_SIZE + RDTAGS_MEM_DESC_SIZE)
 
 static struct of_dev_auxdata msm8226_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("qcom,msm-sdcc", 0xF9824000, \
@@ -163,6 +158,10 @@ static void __init msm8226_early_memory(void)
 {
 	reserve_info = &msm8226_reserve_info;
 	of_scan_flat_dt(dt_scan_for_memory_hole, msm8226_reserve_table);
+}
+
+void __init msm8226_init_early(void)
+{
 }
 
 void __init msm8226_add_devices(void)

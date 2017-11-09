@@ -43,6 +43,10 @@
 #include "pm-boot.h"
 #include "clock.h"
 
+#ifdef CONFIG_MACH_SONY_EAGLE
+#include <linux/nmi.h>
+#endif
+
 #define CREATE_TRACE_POINTS
 #include <mach/trace_msm_low_power.h>
 
@@ -557,6 +561,19 @@ static bool __ref msm_pm_spm_power_collapse(
 	if (MSM_PM_DEBUG_RESET_VECTOR & msm_pm_debug_mask)
 		pr_info("CPU%u: %s: program vector to %p\n",
 			cpu, __func__, entry);
+
+#ifdef CONFIG_MACH_SONY_EAGLE
+	/*
+	 * msm_pm_collapse() : msm_pm_pc_hotplug() will bring us into trustzone
+	 * for some time, so I just feed msm_watchdog to ensure we
+	 * have some time to go.
+	 * But if we are in trustzone for more than 11 seconds,
+	 * msm_watchdog will still bark/bite.
+	 * We only do this on CPU0 since that is where watchdog runs.
+	 */
+	if (cpu == 0)
+		touch_nmi_watchdog();
+#endif
 
 	msm_jtag_save_state();
 
