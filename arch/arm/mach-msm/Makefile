@@ -296,6 +296,7 @@ obj-$(CONFIG_MACH_SONY_EAGLE) += clock-eagle.o
 obj-$(CONFIG_MACH_SONY_EAGLE) += board-eagle-console.o
 obj-$(CONFIG_MACH_SONY_EAGLE) += bms-batterydata-eagle.o
 obj-$(CONFIG_MACH_SONY_EAGLE) += msm_mpmctr.o
+obj-$(CONFIG_MACH_SONY_EAGLE) += board-sony_yukon-nfc.o
 
 #Disabled CAF batterydata,Use device specific.
 #obj-$(CONFIG_QPNP_BMS) += bms-batterydata-oem.o
