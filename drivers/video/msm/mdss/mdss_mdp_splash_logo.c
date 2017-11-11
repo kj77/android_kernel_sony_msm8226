@@ -21,6 +21,11 @@
 #include <linux/iommu.h>
 #include <linux/fb.h>
 
+#ifdef CONFIG_MACH_SONY_EAGLE
+#include <linux/delay.h>
+#include <linux/syscalls.h>
+#endif
+
 #include "mdss_fb.h"
 #include "mdss_mdp.h"
 #include "splash.h"
@@ -493,6 +498,13 @@ static int mdss_mdp_splash_thread(void *data)
 
 	lock_fb_info(mfd->fbi);
 	ret = fb_blank(mfd->fbi, FB_BLANK_UNBLANK);
+#ifdef CONFIG_MACH_SONY_EAGLE
+        pr_info("LCM reboot for truly panel");
+        usleep(1000);
+	    ret = fb_blank(mfd->fbi, FB_BLANK_POWERDOWN);
+        usleep(1000);
+	    ret = fb_blank(mfd->fbi, FB_BLANK_UNBLANK);
+#endif
 	if (ret) {
 		pr_err("can't turn on fb!\n");
 		goto end;
