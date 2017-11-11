@@ -22,7 +22,12 @@
 #define PC_CC_COLS             13
 
 #define PC_TEMP_ROWS		31
+
+#ifdef CONFIG_MACH_SONY_EAGLE
+#define PC_TEMP_COLS		9
+#else
 #define PC_TEMP_COLS		8
+#endif
 
 #define MAX_SINGLE_LUT_COLS	20
 

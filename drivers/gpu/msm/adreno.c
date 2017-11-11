@@ -1,4 +1,5 @@
 /* Copyright (c) 2002,2007-2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014 Sony Mobile Communications Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -9,6 +10,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
+ * NOTE: This file has been modified by Sony Mobile Communications Inc.
+ * Modifications are licensed under the License.
  */
 #include <linux/module.h>
 #include <linux/uaccess.h>
@@ -2742,6 +2745,7 @@ static int adreno_getproperty(struct kgsl_device *device,
 	return status;
 }
 
+#ifndef CONFIG_MACH_SONY_EAGLE
 static int adreno_set_constraint(struct kgsl_device *device,
 				struct kgsl_context *context,
 				struct kgsl_device_constraint *constraint)
@@ -2784,6 +2788,7 @@ static int adreno_set_constraint(struct kgsl_device *device,
 
 	return status;
 }
+#endif
 
 static int adreno_setproperty(struct kgsl_device_private *dev_priv,
 				enum kgsl_property_type type,
@@ -2833,6 +2838,9 @@ static int adreno_setproperty(struct kgsl_device_private *dev_priv,
 		}
 		break;
 	case KGSL_PROP_PWR_CONSTRAINT: {
+#ifdef CONFIG_MACH_SONY_EAGLE
+			status = 0;
+#else
 			struct kgsl_device_constraint constraint;
 			struct kgsl_context *context;
 
@@ -2855,6 +2863,7 @@ static int adreno_setproperty(struct kgsl_device_private *dev_priv,
 								&constraint);
 
 			kgsl_context_put(context);
+#endif
 		}
 		break;
 	default:
@@ -3325,6 +3334,10 @@ static unsigned int adreno_readtimestamp(struct kgsl_device *device,
 			KGSL_MEMSTORE_OFFSET(id, eoptimestamp));
 		break;
 	}
+
+#ifdef CONFIG_MACH_SONY_EAGLE
+	rmb();
+#endif
 
 	return timestamp;
 }
